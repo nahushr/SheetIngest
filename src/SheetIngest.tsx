@@ -12,6 +12,7 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  IconButton,
   InputLabel,
   LinearProgress,
   MenuItem,
@@ -31,6 +32,7 @@ import {
   AutoAwesome as AutoAwesomeIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
   CloudUpload as CloudUploadIcon,
+  Close as CloseIcon,
   Download as DownloadIcon,
   ErrorOutline as ErrorOutlineIcon,
   FilePresent as FilePresentIcon,
@@ -711,7 +713,12 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     >
       <DialogTitle id="sheet-ingest-title" sx={{ pb: 1 }}>
         <Stack spacing={2}>
-          <Typography variant="h6">{title ?? t.title}</Typography>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Typography variant="h6">{title ?? t.title}</Typography>
+            <IconButton aria-label={t.close} title={t.close} onClick={handleClose} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
           <Stepper activeStep={activeStepIndex} alternativeLabel>
             {STEPS.map((item) => (
               <Step key={item}>
