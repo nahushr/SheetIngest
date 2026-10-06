@@ -14,7 +14,7 @@
   <a href="https://stackblitz.com/github/nahushr/SheetIngest?file=examples/vite/src/App.tsx"><img alt="Open the SheetIngest example in StackBlitz" src="https://developer.stackblitz.com/img/open_in_stackblitz.svg" /></a>
 </p>
 
-SheetIngest is a configurable React wizard for importing CSV and Excel files. Define grouped fields and supply your own mapping, validation, test-data, and submit callbacks. The package handles the upload flow, header selection, column matching, and data preview.
+SheetIngest is a configurable React wizard for importing CSV and Excel files. Define grouped fields and supply your own mapping, validation, test-data, and submit callbacks. The package handles file upload, automatic header detection, column matching, and data preview.
 
 ## Demo
 
@@ -24,7 +24,7 @@ SheetIngest is a configurable React wizard for importing CSV and Excel files. De
 
 | Example | What to try |
 |---|---|
-| Contact import | Open the four-step import dialog from the page toolbar. |
+| Contact import | Open the three-step import dialog from the page toolbar. |
 | Grouped template | Download the sample workbook and inspect its merged Contact and Organization headings. |
 | Test data | Choose a row count, generate realistic contact records, and upload the resulting workbook. |
 | Mapping and validation | Change headers in the workbook, map them in the wizard, and review row-level email validation. |
@@ -137,12 +137,11 @@ Replace the example `saveContacts` handler with the host application's API call.
 
 | Step | Behavior |
 |---|---|
-| Upload file | Accept a CSV or XLSX file, download the grouped sample template, or generate host-provided test data. |
-| Select header rows | Suggest the row that best matches the template and its parent row when available. Choose multiple rows for nested headers; the complete worksheet remains available in a scrollable preview, with selected rows bolded. |
-| Match columns | Suggest one-to-one field matches and allow each source column to be remapped or ignored. Group labels from the workbook remain visible. |
+| Upload file | Accept a CSV or XLSX file, download the grouped sample template, or generate host-provided test data. The header rows are inferred automatically from template field names and aliases. |
+| Match columns | Show the uploaded file and worksheet, suggest one-to-one field matches, and allow each source column to be remapped or ignored. Nested group labels from the workbook remain visible. |
 | Data preview | Show mapped rows and row-level validation issues in SuperDataGrid. Email and phone fields use its linked email and telephone cells, including icons, international phone formatting, and country flags. |
 
-The first workbook row contains merged group labels; the next row contains field headers. `templateHeader` changes the header written to the workbook, while `aliases` add names that can be matched automatically. Required fields receive a built-in missing-value check. `mapRow` converts source strings into the host's model; `validateRow` applies entity-specific rules. Errors block submission by default, while warning and informational issues remain visible without blocking it.
+The first workbook row can contain merged group labels; the next row contains field headers. SheetIngest detects the field-header row and carries its preceding group row into the column mappings. `templateHeader` changes the header written to the workbook, while `aliases` add names that can be matched automatically. Required fields receive a built-in missing-value check. `mapRow` converts source strings into the host's model; `validateRow` applies entity-specific rules. Errors block submission by default, while warning and informational issues remain visible without blocking it.
 
 `onGenerateTestData(count)` runs in the host application. Generate records using your own domain data or a test-data library, then call `downloadTemplate(template, rows)` to return an XLSX file using the same grouped template. Rows should be keyed by the template field keys.
 

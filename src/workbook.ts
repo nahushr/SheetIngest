@@ -130,7 +130,9 @@ export const detectHeaderRow = (
         score += 4;
       }
     }
-    score += Math.min(nonEmptyHeaders.length, fields.length) / 100;
+    // Prefer the most complete candidate when no template aliases match. This
+    // favors the actual field-header row over a sparse grouped-heading row.
+    score += nonEmptyHeaders.length / 100;
 
     if (score > bestScore) {
       bestScore = score;
