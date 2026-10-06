@@ -1,0 +1,51 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap");
+
+:root {
+  font-family: "DM Sans", Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #101b37;
+  background: #f5f6fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+body { min-width: 320px; margin: 0; }
+button { font: inherit; }
+
+.demo-shell { min-height: 100vh; padding: 0 28px 48px; }
+.demo-topbar { display: flex; align-items: center; justify-content: space-between; min-height: 82px; border-bottom: 1px solid #e4e7ec; }
+.demo-logo { display: block; width: 205px; height: auto; }
+.demo-topbar__tag { padding: 5px 10px; border: 1px solid #e0e4f2; border-radius: 999px; color: #59647b; background: #fff; font-size: 11px; font-weight: 700; }
+.demo-intro { padding: 47px 0 32px; }
+.demo-kicker { margin: 0 0 9px; color: #4249df; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+.demo-intro h1 { max-width: 760px; font-size: clamp(30px, 4vw, 42px); font-weight: 750; letter-spacing: -.04em; line-height: 1.15; }
+.demo-intro__copy { max-width: 660px; margin-top: 14px !important; color: #667085; font-size: 15px !important; line-height: 1.65 !important; }
+.directory { overflow: hidden; border: 1px solid #e4e7ec; border-radius: 17px; background: #fff; box-shadow: 0 8px 26px rgb(16 27 55 / 4%); }
+.directory-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 22px 24px; border-bottom: 1px solid #edf0f5; }
+.directory-heading h2 { font-size: 19px; font-weight: 750; letter-spacing: -.02em; }
+.directory-count { margin-top: 3px !important; color: #667085; font-size: 12px !important; }
+.directory-icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 12px; color: #4148db; background: #eef0ff; }
+.directory-heading .MuiButton-root { min-height: 40px; border-radius: 9px; background: #4148db; box-shadow: none; font-size: 12px; font-weight: 700; text-transform: none; }
+.directory-heading .MuiButton-root:hover { background: #343bc1; box-shadow: none; }
+.directory > .MuiAlert-root { margin: 14px 20px 0; }
+.contacts-table { border: 0 !important; border-radius: 0 !important; }
+.contacts-table table { min-width: 790px; }
+.contacts-table .MuiTableCell-head { padding-top: 13px; padding-bottom: 13px; color: #667085; background: #fafbfe; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.contacts-table .MuiTableCell-body { padding-top: 13px; padding-bottom: 13px; color: #364152; font-size: 12px; }
+.contact-name { display: flex; flex-direction: column; gap: 4px; }
+.contact-name strong { color: #101b37; font-size: 12px; font-weight: 700; }
+.contact-name span { color: #7b8497; font-size: 11px; }
+.contacts-table .MuiChip-root { height: 23px; border-radius: 7px; font-size: 10px; font-weight: 700; }
+.table-footnote { padding: 10px 22px 14px; color: #7b8497; font-size: 11px !important; }
+.demo-footer { max-width: 760px; margin: 24px auto 0; color: #7b8497; font-size: 11px; line-height: 1.6; text-align: center; }
+
+@media (max-width: 640px) {
+  .demo-shell { padding: 0 14px 35px; }
+  .demo-topbar { min-height: 68px; }
+  .demo-logo { width: 170px; }
+  .demo-intro { padding: 34px 0 24px; }
+  .demo-intro__copy { font-size: 13px !important; }
+  .directory-heading { align-items: flex-start; padding: 16px; }
+  .directory-heading .MuiButton-root { min-width: 42px; padding: 9px; font-size: 0; }
+  .directory-heading .MuiButton-startIcon { margin: 0; }
+}

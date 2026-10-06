@@ -41,6 +41,9 @@ jobs:
       - name: Build package
         run: npm run build
 
+      - name: Type-check and build the Vite example
+        run: npm run build:example
+
       - name: Verify package contents
         run: npm pack --dry-run
 
