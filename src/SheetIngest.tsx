@@ -193,8 +193,8 @@ interface ProcessRecordOptions<Row extends SheetIngestRow> {
   headerRow: number;
   file: File;
   sheetName: string;
-  mapRow?: SheetIngestProps<Row>["mapRow"];
-  validateRow?: SheetIngestProps<Row>["validateRow"];
+  mapRow: SheetIngestProps<Row>["mapRow"];
+  validateRow: SheetIngestProps<Row>["validateRow"];
 }
 
 const processRecord = async <Row extends SheetIngestRow>({
