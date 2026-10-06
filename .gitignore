@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+.scannerwork/
+.env*
+npm-debug.log*

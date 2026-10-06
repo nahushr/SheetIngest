@@ -1,0 +1,219 @@
+name: Build, analyze, and publish SheetIngest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sheet-ingest-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and verify package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint, tests, and type checks
+        run: |
+          npm run lint
+          npm test
+          npm run typecheck
+
+      - name: Build package
+        run: npm run build
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+
+  analyze:
+    name: SonarCloud and Snyk analysis
+    needs: build
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HAS_SONAR_TOKEN: ${{ secrets.SONAR_TOKEN != '' }}
+      HAS_SNYK_TOKEN: ${{ secrets.SNYK_TOKEN != '' }}
+    steps:
+      - name: Check out source with full history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Require SonarCloud credentials for trusted builds
+        if: env.HAS_SONAR_TOKEN != 'true'
+        run: |
+          echo "::error::SONAR_TOKEN is required to enforce the SonarCloud quality gate."
+          exit 1
+
+      - name: Run SonarCloud analysis and wait for the quality gate
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >-
+          npx --yes sonarqube-scanner@5.0.0
+          -Dsonar.token="$SONAR_TOKEN"
+          -Dsonar.qualitygate.wait=true
+          -Dsonar.qualitygate.timeout=600
+          -Dsonar.coverage.exclusions=**/*
+
+      - name: Fail when SonarCloud reports open issues
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PULL_REQUEST: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          issue_scope=()
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            issue_scope+=(--data-urlencode "pullRequest=$SONAR_PULL_REQUEST")
+          else
+            issue_scope+=(--data-urlencode "branch=$GITHUB_REF_NAME")
+          fi
+
+          response="$(curl --fail --silent --show-error --user "${SONAR_TOKEN}:" \
+            --get \
+            --data-urlencode 'componentKeys=nahushr_SheetIngest' \
+            --data-urlencode 'resolved=false' \
+            --data-urlencode 'ps=500' \
+            "${issue_scope[@]}" \
+            'https://sonarcloud.io/api/issues/search')"
+          issue_total="$(jq --raw-output '.total' <<< "$response")"
+
+          if [[ "$issue_total" != "0" ]]; then
+            echo "::error::SonarCloud reported $issue_total unresolved issue(s)."
+            jq --raw-output '.issues[:100][] | "\(.severity) \(.type) \(.component) line \(.line // 0): \(.message)"' <<< "$response"
+            exit 1
+          fi
+
+          echo "SonarCloud reports zero unresolved issues."
+
+      - name: Set up Snyk CLI
+        if: env.HAS_SNYK_TOKEN == 'true'
+        uses: snyk/actions/setup@806182742461562b67788a64410098c9d9b96adb
+
+      - name: Run Snyk dependency analysis
+        if: env.HAS_SNYK_TOKEN == 'true'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --all-projects --severity-threshold=high
+
+      - name: Run Snyk Code analysis
+        if: env.HAS_SNYK_TOKEN == 'true'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk code test --severity-threshold=high
+
+      - name: Note missing Snyk secret
+        if: env.HAS_SNYK_TOKEN != 'true'
+        run: echo "::notice::Snyk analysis skipped because SNYK_TOKEN is not configured."
+
+  publish:
+    name: Publish to npm
+    needs: analyze
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+    steps:
+      - name: Require npm publishing credentials
+        if: env.HAS_NPM_TOKEN != 'true'
+        run: |
+          echo "::error::NPM_TOKEN is required to publish SheetIngest releases."
+          exit 1
+
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up npm registry authentication
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          scope: "@simplishelf"
+
+      - name: Verify npm publishing identity
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm whoami --registry=https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Select the next available patch version
+        id: release
+        env:
+          PACKAGE_NAME: "@simplishelf/sheet-ingest"
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          bumped=false
+          for attempt in $(seq 1 20); do
+            if ! npm view "$PACKAGE_NAME@$version" version --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+              break
+            fi
+            if [ "$attempt" -eq 20 ]; then
+              echo "::error::Could not find an available version after 20 patch increments."
+              exit 1
+            fi
+            npm version patch --no-git-tag-version --ignore-scripts >/dev/null
+            version="$(node -p "require('./package.json').version")"
+            bumped=true
+          done
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "bumped=$bumped" >> "$GITHUB_OUTPUT"
+
+      - name: Build package for publishing
+        run: npm run build
+
+      - name: Publish public npm package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --registry=https://registry.npmjs.org
+
+      - name: Commit the released version
+        if: steps.release.outputs.bumped == 'true'
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json
+          git commit -m "chore(release): sync npm version $VERSION [skip ci]"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
