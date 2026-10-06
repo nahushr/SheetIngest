@@ -110,6 +110,12 @@ interface ProcessedRow<Row extends SheetIngestRow> {
   errors: SheetIngestIssue[];
 }
 
+interface KeyedRow {
+  cells: string[];
+  index: number;
+  key: string;
+}
+
 type GridRow<Row extends SheetIngestRow> = Row & {
   rowNumber: number;
   status: string;
@@ -128,6 +134,16 @@ const getFileExtension = (fileName: string): string =>
 
 const isBlankRow = (row: readonly string[]): boolean =>
   row.every((cell) => cell.trim() === "");
+
+const createKeyedRows = (rows: readonly string[][]): KeyedRow[] => {
+  const occurrences = new Map<string, number>();
+  return rows.map((cells, index) => {
+    const fingerprint = JSON.stringify(cells);
+    const occurrence = occurrences.get(fingerprint) ?? 0;
+    occurrences.set(fingerprint, occurrence + 1);
+    return { cells, index, key: `${fingerprint}-${occurrence}` };
+  });
+};
 
 const asIssue = (value: string | SheetIngestIssue): SheetIngestIssue =>
   typeof value === "string" ? { message: value } : value;
@@ -162,10 +178,70 @@ const cellText = (value: unknown): string => {
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (value instanceof Date) return value.toLocaleString();
   try {
-    return JSON.stringify(value);
+    return JSON.stringify(value) ?? "";
   } catch {
-    return String(value);
+    return "";
   }
+};
+
+interface ProcessRecordOptions<Row extends SheetIngestRow> {
+  sourceRow: string[];
+  rowIndex: number;
+  fields: readonly SheetIngestField[];
+  columnMapping: Readonly<Record<string, number | null>>;
+  matrix: string[][];
+  headerRow: number;
+  file: File;
+  sheetName: string;
+  mapRow?: SheetIngestProps<Row>["mapRow"];
+  validateRow?: SheetIngestProps<Row>["validateRow"];
+}
+
+const processRecord = async <Row extends SheetIngestRow>({
+  sourceRow,
+  rowIndex,
+  fields,
+  columnMapping,
+  matrix,
+  headerRow,
+  file,
+  sheetName,
+  mapRow,
+  validateRow,
+}: ProcessRecordOptions<Row>): Promise<ProcessedRow<Row>> => {
+  const rawValues = Object.fromEntries(
+    fields.map((field) => {
+      const sourceIndex = columnMapping[field.key];
+      return [
+        field.key,
+        sourceIndex == null || sourceIndex < 0 ? "" : sourceRow[sourceIndex] ?? "",
+      ];
+    }),
+  ) as Record<string, string>;
+  const physicalRowNumber = matrix.indexOf(sourceRow, headerRow + 1) + 1;
+  const context: SheetIngestRowContext = {
+    rowNumber: physicalRowNumber || headerRow + rowIndex + 2,
+    file,
+    sheetName,
+    values: rawValues,
+  };
+  const errors: SheetIngestIssue[] = fields.flatMap((field) =>
+    field.required && rawValues[field.key].trim() === ""
+      ? [{ field: field.label, message: `${field.label} is required.` }]
+      : [],
+  );
+  let data = rawValues as unknown as Row;
+
+  try {
+    if (mapRow) data = await mapRow(rawValues, context);
+    if (validateRow) errors.push(...toIssueList(await validateRow(data, context)));
+  } catch (cause) {
+    errors.push({
+      message: cause instanceof Error ? cause.message : "This row could not be processed.",
+    });
+  }
+
+  return { rowNumber: context.rowNumber, data, errors };
 };
 
 const ErrorStatusCell = <Row extends SheetIngestRow>({
@@ -275,6 +351,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   }, [isOpen, reset]);
 
   const columns = useMemo(() => getSourceColumns(matrix, headerRow), [headerRow, matrix]);
+  const keyedRows = useMemo(() => createKeyedRows(matrix), [matrix]);
   const headers = useMemo(
     () => columns.map((column) => column.header || `Column ${column.index + 1}`),
     [columns],
@@ -427,39 +504,22 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     setBusy(true);
     setError(null);
     try {
-      const result: ProcessedRow<Row>[] = [];
-      for (let rowIndex = 0; rowIndex < records.length; rowIndex += 1) {
-        const sourceRow = records[rowIndex];
-        const rawValues: Record<string, string> = {};
-        for (const field of fields) {
-          const sourceIndex = columnMapping[field.key];
-          rawValues[field.key] = sourceIndex == null ? "" : sourceRow[sourceIndex] ?? "";
-        }
-        const physicalRowNumber = matrix.indexOf(sourceRow, headerRow + 1) + 1;
-        const context: SheetIngestRowContext = {
-          rowNumber: physicalRowNumber || headerRow + rowIndex + 2,
-          file,
-          sheetName,
-          values: rawValues,
-        };
-        const issues: SheetIngestIssue[] = [];
-        for (const field of fields) {
-          if (field.required && rawValues[field.key].trim() === "") {
-            issues.push({ field: field.label, message: `${field.label} is required.` });
-          }
-        }
-
-        let data = rawValues as unknown as Row;
-        try {
-          if (mapRow) data = await mapRow(rawValues, context);
-          if (validateRow) issues.push(...toIssueList(await validateRow(data, context)));
-        } catch (cause) {
-          issues.push({
-            message: cause instanceof Error ? cause.message : "This row could not be processed.",
-          });
-        }
-        result.push({ rowNumber: context.rowNumber, data, errors: issues });
-      }
+      const result = await Promise.all(
+        records.map((sourceRow, rowIndex) =>
+          processRecord({
+            sourceRow,
+            rowIndex,
+            fields,
+            columnMapping,
+            matrix,
+            headerRow,
+            file,
+            sheetName,
+            mapRow,
+            validateRow,
+          }),
+        ),
+      );
       setProcessedRows(result);
       setStep("preview");
     } catch (cause) {
@@ -633,8 +693,8 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                   value={headerRow}
                   onChange={(event) => handleHeaderRowChange(Number(event.target.value))}
                 >
-                  {matrix.map((_, index) => (
-                    <MenuItem key={index} value={index}>Row {index + 1}{index === headerRow ? " (selected)" : ""}</MenuItem>
+                  {keyedRows.map(({ index, key }) => (
+                    <MenuItem key={key} value={index}>Row {index + 1}{index === headerRow ? " (selected)" : ""}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
@@ -650,9 +710,9 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {matrix.slice(0, 8).map((row, index) => (
+                  {keyedRows.slice(0, 8).map(({ cells: row, index, key }) => (
                     <TableRow
-                      key={index}
+                      key={key}
                       selected={index === headerRow}
                       hover
                       onClick={() => handleHeaderRowChange(index)}

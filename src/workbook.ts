@@ -9,6 +9,21 @@ export interface WorkbookSheet {
   rows: SheetIngestMatrix;
 }
 
+const stringifyCellValue = (value: unknown): string => {
+  if (value == null) return "";
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? "" : value.toISOString();
+  }
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  try {
+    return JSON.stringify(value) ?? "";
+  } catch {
+    return "";
+  }
+};
+
 const cellToString = (cell: ExcelJS.Cell): string => {
   if (cell.isMerged && cell.master.address !== cell.address) return "";
   const value = cell.value;
@@ -23,7 +38,7 @@ const cellToString = (cell: ExcelJS.Cell): string => {
     return value.richText.map((part) => part.text).join("");
   }
   if ("text" in value && typeof value.text === "string") return value.text;
-  if ("result" in value) return value.result == null ? "" : String(value.result);
+  if ("result" in value) return stringifyCellValue(value.result);
   return cell.text;
 };
 
@@ -239,9 +254,9 @@ const toWorkbookCellValue = (value: unknown): string | number | boolean | Date =
     return value;
   }
   try {
-    return JSON.stringify(value);
+    return JSON.stringify(value) ?? "";
   } catch {
-    return String(value);
+    return "";
   }
 };
 
@@ -312,7 +327,7 @@ export const downloadTemplate = async (
   rows: readonly Readonly<Record<string, unknown>>[] = [],
 ): Promise<void> => {
   if (typeof document === "undefined") {
-    throw new Error("Template downloads are only available in a browser.");
+    throw new TypeError("Template downloads are only available in a browser.");
   }
   const workbook = createTemplateWorkbook(template, rows);
   const buffer = await workbook.xlsx.writeBuffer();
