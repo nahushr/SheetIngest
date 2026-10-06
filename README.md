@@ -138,9 +138,9 @@ Replace the example `saveContacts` handler with the host application's API call.
 | Step | Behavior |
 |---|---|
 | Upload file | Accept a CSV or XLSX file, download the grouped sample template, or generate host-provided test data. |
-| Select header row | Suggest a header row from template keys, labels, template headers, and aliases. The user can change the selection. |
+| Select header rows | Suggest the row that best matches the template and its parent row when available. Choose multiple rows for nested headers; the complete worksheet remains available in a scrollable preview, with selected rows bolded. |
 | Match columns | Suggest one-to-one field matches and allow each source column to be remapped or ignored. Group labels from the workbook remain visible. |
-| Data preview | Show mapped rows and row-level validation issues in SuperDataGrid before the host submits them. |
+| Data preview | Show mapped rows and row-level validation issues in SuperDataGrid. Email and phone fields use its linked email and telephone cells, including icons, international phone formatting, and country flags. |
 
 The first workbook row contains merged group labels; the next row contains field headers. `templateHeader` changes the header written to the workbook, while `aliases` add names that can be matched automatically. Required fields receive a built-in missing-value check. `mapRow` converts source strings into the host's model; `validateRow` applies entity-specific rules. Errors block submission by default, while warning and informational issues remain visible without blocking it.
 
@@ -161,6 +161,8 @@ The first workbook row contains merged group labels; the next row contains field
 | `allowInvalidSubmit` | Allow submission when rows contain validation errors. Defaults to `false`. |
 | `title`, `translations`, `dialogProps` | Customize the dialog title, labels, and MUI dialog props. |
 | `renderStepContent` | Render host-specific content below the active step. |
+
+Email and phone preview types are inferred from each field's key, label, template header, and aliases. Set `type: "email"` or `type: "phone"` to override inference. Per-field `columnOptions` customize the SuperDataGrid renderer; for example, set `columnOptions.phone.countryCode` to interpret national numbers for a different default country. Email links use `mailto:`, and phone links use `tel:`.
 
 The exported `SheetIngestProps`, `SheetIngestTemplate`, `SheetIngestGroup`, `SheetIngestField`, `SheetIngestIssue`, and row-context types are available for TypeScript apps.
 

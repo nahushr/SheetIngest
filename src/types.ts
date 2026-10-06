@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import type { DialogProps } from "@mui/material/Dialog";
-import type { SuperDataGridColumnType } from "@simplishelf/super-data-grid";
+import type {
+  SuperDataGridColumnOptions,
+  SuperDataGridColumnType,
+} from "@simplishelf/super-data-grid";
 
 export type SheetIngestScalar = string | number | boolean | Date | null | undefined;
 export type SheetIngestRow = object;
@@ -21,6 +24,8 @@ export interface SheetIngestField {
   example?: string;
   /** Optional cell renderer supplied by SuperDataGrid. */
   type?: SuperDataGridColumnType;
+  /** Options for built-in preview cells such as email links and phone flags. */
+  columnOptions?: SuperDataGridColumnOptions;
   /** Width for this field in the preview table. */
   width?: number;
   /** Exclude the field from the preview grid while still allowing mapping. */

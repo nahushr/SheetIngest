@@ -220,31 +220,44 @@ export interface SourceColumn {
 /** Build source-column labels, carrying merged group headings across blank cells. */
 export const getSourceColumns = (
   rows: readonly (readonly string[])[],
-  headerRow: number,
+  headerRows: number | readonly number[],
 ): SourceColumn[] => {
-  const headings = rows[headerRow] ?? [];
-  const groupRow = headerRow > 0 ? rows[headerRow - 1] ?? [] : [];
-  const maxColumns = Math.max(
-    headings.length,
-    ...rows.slice(headerRow + 1).map((row) => row.length),
-  );
-  const groups: string[] = [];
-  let activeGroup = "";
+  // Keep the original numeric API behavior: a numeric header row uses the row
+  // above it as its group row. Array input represents the exact selected levels.
+  const requestedRows = typeof headerRows === "number"
+    ? headerRows > 0 ? [headerRows - 1, headerRows] : [headerRows]
+    : [...headerRows];
+  const selectedRows = [...new Set(requestedRows)]
+    .filter((index) => Number.isInteger(index) && index >= 0 && index < rows.length)
+    .sort((left, right) => left - right);
+  if (selectedRows.length === 0) return [];
 
-  for (let column = 0; column < maxColumns; column += 1) {
-    const value = groupRow[column]?.trim() ?? "";
-    if (value) activeGroup = value;
-    groups[column] = activeGroup;
-  }
+  const lastHeaderRow = selectedRows[selectedRows.length - 1];
+  const groupRows = selectedRows.slice(0, -1).map((rowIndex) => rows[rowIndex] ?? []);
+  const headings = rows[lastHeaderRow] ?? [];
+  const maxColumns = Math.max(
+    ...selectedRows.map((rowIndex) => rows[rowIndex]?.length ?? 0),
+    ...rows.slice(lastHeaderRow + 1).map((row) => row.length),
+  );
+  const groups = groupRows.map((groupRow) => {
+    const level: string[] = [];
+    let activeGroup = "";
+    for (let column = 0; column < maxColumns; column += 1) {
+      const value = groupRow[column]?.trim() ?? "";
+      if (value) activeGroup = value;
+      level[column] = activeGroup;
+    }
+    return level;
+  });
 
   return Array.from({ length: maxColumns }, (_, index) => ({
     index,
     header: headings[index]?.trim() ?? "",
-    group: groups[index] ?? "",
-    sample: rows[headerRow + 1]?.[index] ?? "",
+    group: groups.map((level) => level[index]).filter(Boolean).join(" / "),
+    sample: rows[lastHeaderRow + 1]?.[index] ?? "",
   })).filter((column) => {
     if (column.header || column.group || column.sample) return true;
-    return rows.slice(headerRow + 2).some((row) => Boolean(row[column.index]?.trim()));
+    return rows.slice(lastHeaderRow + 2).some((row) => Boolean(row[column.index]?.trim()));
   });
 };
 

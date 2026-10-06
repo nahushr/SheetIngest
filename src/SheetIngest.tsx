@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
@@ -20,17 +21,12 @@ import {
   Step,
   StepLabel,
   Stepper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
-import type { GridColumnGroupingModel } from "@mui/x-data-grid";
+import { DataGrid } from "@mui/x-data-grid";
+import type { GridColDef, GridColumnGroupingModel } from "@mui/x-data-grid";
 import {
   AutoAwesome as AutoAwesomeIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
@@ -45,6 +41,7 @@ import SuperDataGrid from "@simplishelf/super-data-grid";
 import type {
   SuperDataGridCellProps,
   SuperDataGridColumnConfiguration,
+  SuperDataGridColumnOptions,
   SuperDataGridColumnType,
 } from "@simplishelf/super-data-grid";
 import {
@@ -70,7 +67,7 @@ const DEFAULT_TRANSLATIONS: SheetIngestTranslations = {
   title: "Import data",
   steps: {
     upload: "Upload file",
-    header: "Select header row",
+    header: "Select header rows",
     mapping: "Match columns",
     preview: "Data preview",
   },
@@ -78,7 +75,7 @@ const DEFAULT_TRANSLATIONS: SheetIngestTranslations = {
   generateTestData: "Generate test data",
   uploadFile: "Upload spreadsheet",
   chooseFile: "Choose file",
-  selectHeaderRow: "Header row",
+  selectHeaderRow: "Header rows",
   matchColumns: "Match columns",
   dataPreview: "Data preview",
   back: "Back",
@@ -97,7 +94,7 @@ const DEFAULT_TRANSLATIONS: SheetIngestTranslations = {
   records: "records",
   testRecordCount: "Number of records",
   fileHelp: "Supported formats: CSV and XLSX. The first worksheet is used.",
-  headerHelp: "We selected the row that best matches this template. Change it if needed.",
+  headerHelp: "We preselected the best matching row and its parent row when available. Select every row that belongs to your nested headers.",
   mappingHelp: "Match each template field to the column that contains its data.",
   previewHelp: "Review validation results before importing. Rows with errors are blocked by default.",
 };
@@ -114,6 +111,12 @@ interface KeyedRow {
   cells: string[];
   index: number;
   key: string;
+}
+
+interface HeaderPreviewGridRow {
+  id: number;
+  headerIndex: number;
+  cells: string[];
 }
 
 type GridRow<Row extends SheetIngestRow> = Row & {
@@ -274,6 +277,7 @@ const getCustomColumns = (
 ): {
   columns: string[];
   columnConfiguration: Partial<Record<string, SuperDataGridColumnConfiguration>>;
+  columnOptions: Partial<Record<string, SuperDataGridColumnOptions>>;
   columnTypes: Partial<Record<string, SuperDataGridColumnType>>;
 } => {
   const visibleFields = fields.filter((field) => !field.hideInPreview);
@@ -281,6 +285,7 @@ const getCustomColumns = (
     rowNumber: { headerName: rowNumberLabel, width: 76, minWidth: 70, maxWidth: 90 },
     status: { headerName: statusLabel, width: 150, minWidth: 130 },
   };
+  const columnOptions: Partial<Record<string, SuperDataGridColumnOptions>> = {};
   const columnTypes: Partial<Record<string, SuperDataGridColumnType>> = {};
   for (const field of visibleFields) {
     columnConfiguration[field.key] = {
@@ -288,11 +293,41 @@ const getCustomColumns = (
       width: field.width ?? 160,
       minWidth: Math.min(field.width ?? 160, 110),
     };
-    if (field.type) columnTypes[field.key] = field.type;
+    const normalizedNames = [field.key, field.label, field.templateHeader, ...(field.aliases ?? [])]
+      .filter((name): name is string => Boolean(name?.trim()))
+      .map(normalizeHeader);
+    const inferredType: SuperDataGridColumnType | undefined = field.type ??
+      (normalizedNames.some((name) => name.includes("email"))
+        ? "email"
+        : normalizedNames.some((name) => /phone|telephone|mobile|cell|fax/.test(name))
+          ? "phone"
+          : undefined);
+
+    if (inferredType) columnTypes[field.key] = inferredType;
+    if (inferredType === "email") {
+      columnOptions[field.key] = {
+        ...field.columnOptions,
+        email: { showIcon: true, ...field.columnOptions?.email },
+      };
+    } else if (inferredType === "phone") {
+      columnOptions[field.key] = {
+        ...field.columnOptions,
+        phone: {
+          showIcon: true,
+          showFlag: true,
+          countryCode: "US",
+          format: "international",
+          ...field.columnOptions?.phone,
+        },
+      };
+    } else if (field.columnOptions) {
+      columnOptions[field.key] = field.columnOptions;
+    }
   }
   return {
     columns: ["rowNumber", ...visibleFields.map((field) => field.key), "status"],
     columnConfiguration,
+    columnOptions,
     columnTypes,
   };
 };
@@ -326,6 +361,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   const [sheetName, setSheetName] = useState("");
   const [matrix, setMatrix] = useState<string[][]>([]);
   const [headerRow, setHeaderRow] = useState(0);
+  const [headerRows, setHeaderRows] = useState<number[]>([0]);
   const [columnMapping, setColumnMapping] = useState<Record<string, number | null>>({});
   const [processedRows, setProcessedRows] = useState<ProcessedRow<Row>[]>([]);
   const [testDataCount, setTestDataCount] = useState(defaultTestDataCount);
@@ -339,6 +375,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     setSheetName("");
     setMatrix([]);
     setHeaderRow(0);
+    setHeaderRows([0]);
     setColumnMapping({});
     setProcessedRows([]);
     setBusy(false);
@@ -350,8 +387,16 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     if (isOpen) reset();
   }, [isOpen, reset]);
 
-  const columns = useMemo(() => getSourceColumns(matrix, headerRow), [headerRow, matrix]);
+  const columns = useMemo(() => getSourceColumns(matrix, headerRows), [headerRows, matrix]);
   const keyedRows = useMemo(() => createKeyedRows(matrix), [matrix]);
+  const headerPreviewColumnCount = useMemo(
+    () => matrix.reduce((count, row) => Math.max(count, row.length), 0),
+    [matrix],
+  );
+  const headerPreviewRows = useMemo<HeaderPreviewGridRow[]>(
+    () => keyedRows.map(({ cells, index }) => ({ id: index, headerIndex: index, cells })),
+    [keyedRows],
+  );
   const headers = useMemo(
     () => columns.map((column) => column.header || `Column ${column.index + 1}`),
     [columns],
@@ -424,10 +469,15 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
         throw new Error("The worksheet needs a header row and at least one data row.");
       }
       const detectedHeader = detectHeaderRow(sheet.rows, fields);
+      const parentHeader = sheet.rows[detectedHeader - 1];
+      const initialHeaderRows = detectedHeader > 0 && parentHeader?.some((cell) => cell.trim())
+        ? [detectedHeader - 1, detectedHeader]
+        : [detectedHeader];
       setFile(selectedFile);
       setSheetName(sheet.name);
       setMatrix(sheet.rows);
       setHeaderRow(detectedHeader);
+      setHeaderRows(initialHeaderRows);
       setColumnMapping({});
       setStep("header");
     } catch (cause) {
@@ -471,10 +521,69 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     }
   }, [maxTestDataCount, onGenerateTestData, t.records, testDataCount]);
 
-  const handleHeaderRowChange = useCallback((nextHeaderRow: number): void => {
-    setHeaderRow(nextHeaderRow);
+  const applyHeaderRows = useCallback((rows: readonly number[]): void => {
+    const nextHeaderRows = [...new Set(rows)]
+      .filter((index) => Number.isInteger(index) && index >= 0 && index < matrix.length)
+      .sort((left, right) => left - right);
+    if (nextHeaderRows.length === 0) return;
+    setHeaderRows(nextHeaderRows);
+    setHeaderRow(nextHeaderRows[nextHeaderRows.length - 1]);
     setColumnMapping({});
-  }, []);
+  }, [matrix.length]);
+
+  const handleHeaderRowsChange = useCallback((rowIndex: number): void => {
+    const nextHeaderRows = headerRows.includes(rowIndex)
+      ? headerRows.length > 1 ? headerRows.filter((index) => index !== rowIndex) : headerRows
+      : [...headerRows, rowIndex].sort((left, right) => left - right);
+    applyHeaderRows(nextHeaderRows);
+  }, [applyHeaderRows, headerRows]);
+
+  const headerPreviewColumns = useMemo<GridColDef<HeaderPreviewGridRow>[]>(() => [
+    {
+      field: "headerRow",
+      headerName: t.selectHeaderRow,
+      width: 112,
+      sortable: false,
+      filterable: false,
+      disableColumnMenu: true,
+      renderCell: ({ row }) => {
+        const selected = headerRows.includes(row.headerIndex);
+        return (
+          <Stack direction="row" spacing={0.25} alignItems="center">
+            <Checkbox
+              size="small"
+              checked={selected}
+              onChange={() => handleHeaderRowsChange(row.headerIndex)}
+              onClick={(event) => event.stopPropagation()}
+              inputProps={{ "aria-label": `Select row ${row.headerIndex + 1} as a header row` }}
+            />
+            <Typography variant="body2" fontWeight={selected ? 700 : 400}>
+              {row.headerIndex + 1}
+            </Typography>
+          </Stack>
+        );
+      },
+    },
+    ...Array.from({ length: headerPreviewColumnCount }, (_, cellIndex): GridColDef<HeaderPreviewGridRow> => ({
+      field: `column${cellIndex}`,
+      headerName: `Column ${cellIndex + 1}`,
+      minWidth: 160,
+      flex: 1,
+      sortable: false,
+      filterable: false,
+      disableColumnMenu: true,
+      renderCell: ({ row }) => (
+        <Typography
+          variant="body2"
+          noWrap
+          title={row.cells[cellIndex] ?? ""}
+          fontWeight={headerRows.includes(row.headerIndex) ? 700 : 400}
+        >
+          {row.cells[cellIndex] ?? ""}
+        </Typography>
+      ),
+    })),
+  ], [handleHeaderRowsChange, headerPreviewColumnCount, headerRows, t.selectHeaderRow]);
 
   const handleContinueFromHeader = useCallback((): void => {
     if (columns.length === 0) {
@@ -685,53 +794,60 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                 <Typography variant="subtitle1" fontWeight={600}>{file?.name}</Typography>
                 <Typography variant="body2" color="text.secondary">{t.headerHelp}</Typography>
               </Box>
-              <FormControl size="small" sx={{ width: { xs: "100%", sm: 230 } }}>
-                <InputLabel id="sheet-ingest-header-row-label">{t.selectHeaderRow}</InputLabel>
+              <FormControl size="small" sx={{ width: { xs: "100%", sm: 260 } }}>
+                <InputLabel id="sheet-ingest-header-rows-label">{t.selectHeaderRow}</InputLabel>
                 <Select
-                  labelId="sheet-ingest-header-row-label"
+                  labelId="sheet-ingest-header-rows-label"
                   label={t.selectHeaderRow}
-                  value={headerRow}
-                  onChange={(event) => handleHeaderRowChange(Number(event.target.value))}
+                  multiple
+                  value={headerRows}
+                  renderValue={(selected) => selected.map((index) => `Row ${index + 1}`).join(", ")}
+                  onChange={(event) => {
+                    const selected = event.target.value;
+                    const nextHeaderRows = Array.isArray(selected)
+                      ? selected.map(Number)
+                      : String(selected).split(",").map(Number);
+                    applyHeaderRows(nextHeaderRows);
+                  }}
                 >
                   {keyedRows.map(({ index, key }) => (
-                    <MenuItem key={key} value={index}>Row {index + 1}{index === headerRow ? " (selected)" : ""}</MenuItem>
+                    <MenuItem key={key} value={index}>
+                      <Checkbox size="small" checked={headerRows.includes(index)} />
+                      Row {index + 1}
+                    </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Stack>
-            <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 340 }}>
-              <Table size="small" stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ width: 84 }}>Row</TableCell>
-                    {Array.from({ length: Math.min(Math.max(...matrix.slice(0, 8).map((row) => row.length), 1), 8) }, (_, index) => (
-                      <TableCell key={index}>Column {index + 1}</TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {keyedRows.slice(0, 8).map(({ cells: row, index, key }) => (
-                    <TableRow
-                      key={key}
-                      selected={index === headerRow}
-                      hover
-                      onClick={() => handleHeaderRowChange(index)}
-                      sx={{ cursor: "pointer" }}
-                    >
-                      <TableCell component="th" scope="row">{index + 1}{index === headerRow ? " ✓" : ""}</TableCell>
-                      {Array.from({ length: Math.min(Math.max(...matrix.slice(0, 8).map((item) => item.length), 1), 8) }, (_, cellIndex) => (
-                        <TableCell key={cellIndex} sx={{ maxWidth: 260 }}>
-                          <Typography variant="body2" noWrap title={row[cellIndex] ?? ""}>
-                            {row[cellIndex] ?? ""}
-                          </Typography>
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <Typography variant="body2" color="text.secondary">Worksheet: {sheetName}</Typography>
+              <Box sx={{ width: "100%", height: 360 }}>
+                <DataGrid
+                  rows={headerPreviewRows}
+                  columns={headerPreviewColumns}
+                  getRowId={(row) => row.id}
+                  getRowClassName={({ row }) =>
+                    headerRows.includes(row.headerIndex) ? "sheet-ingest-selected-header" : ""
+                  }
+                  onRowClick={({ row }) => handleHeaderRowsChange(row.headerIndex)}
+                  disableRowSelectionOnClick
+                  disableColumnFilter
+                  disableColumnSelector
+                  disableDensitySelector
+                  hideFooter
+                  rowHeight={40}
+                  columnHeaderHeight={40}
+                  sx={{
+                    borderRadius: 1,
+                    "& .sheet-ingest-selected-header .MuiDataGrid-cell": {
+                      fontWeight: 700,
+                      backgroundColor: "action.selected",
+                    },
+                    "& .MuiDataGrid-row": { cursor: "pointer" },
+                  }}
+                />
+              </Box>
+            <Typography variant="body2" color="text.secondary">
+              Worksheet: {sheetName} · {matrix.length.toLocaleString()} rows · {headerPreviewColumnCount.toLocaleString()} columns
+            </Typography>
           </Stack>
         )}
 
@@ -836,6 +952,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                 columns={grid.columns}
                 data={previewRows}
                 columnConfiguration={grid.columnConfiguration}
+                columnOptions={grid.columnOptions}
                 columnTypes={grid.columnTypes}
                 columnGroupingModel={groupingModel}
                 cellComponents={cellComponents}
