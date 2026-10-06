@@ -296,12 +296,15 @@ const getCustomColumns = (
     const normalizedNames = [field.key, field.label, field.templateHeader, ...(field.aliases ?? [])]
       .filter((name): name is string => Boolean(name?.trim()))
       .map(normalizeHeader);
-    const inferredType: SuperDataGridColumnType | undefined = field.type ??
-      (normalizedNames.some((name) => name.includes("email"))
-        ? "email"
-        : normalizedNames.some((name) => /phone|telephone|mobile|cell|fax/.test(name))
-          ? "phone"
-          : undefined);
+    let inferredType = field.type;
+    if (!inferredType && normalizedNames.some((name) => name.includes("email"))) {
+      inferredType = "email";
+    } else if (
+      !inferredType &&
+      normalizedNames.some((name) => /phone|telephone|mobile|cell|fax/.test(name))
+    ) {
+      inferredType = "phone";
+    }
 
     if (inferredType) columnTypes[field.key] = inferredType;
     if (inferredType === "email") {
@@ -525,16 +528,22 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     const nextHeaderRows = [...new Set(rows)]
       .filter((index) => Number.isInteger(index) && index >= 0 && index < matrix.length)
       .sort((left, right) => left - right);
-    if (nextHeaderRows.length === 0) return;
+    const lastHeaderRow = nextHeaderRows.at(-1);
+    if (lastHeaderRow === undefined) return;
     setHeaderRows(nextHeaderRows);
-    setHeaderRow(nextHeaderRows[nextHeaderRows.length - 1]);
+    setHeaderRow(lastHeaderRow);
     setColumnMapping({});
   }, [matrix.length]);
 
   const handleHeaderRowsChange = useCallback((rowIndex: number): void => {
-    const nextHeaderRows = headerRows.includes(rowIndex)
-      ? headerRows.length > 1 ? headerRows.filter((index) => index !== rowIndex) : headerRows
-      : [...headerRows, rowIndex].sort((left, right) => left - right);
+    const nextHeaderRows = [...headerRows];
+    const selectedIndex = nextHeaderRows.indexOf(rowIndex);
+    if (selectedIndex >= 0) {
+      if (nextHeaderRows.length > 1) nextHeaderRows.splice(selectedIndex, 1);
+    } else {
+      nextHeaderRows.push(rowIndex);
+      nextHeaderRows.sort((left, right) => left - right);
+    }
     applyHeaderRows(nextHeaderRows);
   }, [applyHeaderRows, headerRows]);
 

@@ -224,15 +224,18 @@ export const getSourceColumns = (
 ): SourceColumn[] => {
   // Keep the original numeric API behavior: a numeric header row uses the row
   // above it as its group row. Array input represents the exact selected levels.
-  const requestedRows = typeof headerRows === "number"
-    ? headerRows > 0 ? [headerRows - 1, headerRows] : [headerRows]
-    : [...headerRows];
+  let requestedRows: number[];
+  if (typeof headerRows === "number") {
+    requestedRows = [headerRows];
+    if (headerRows > 0) requestedRows.unshift(headerRows - 1);
+  } else {
+    requestedRows = [...headerRows];
+  }
   const selectedRows = [...new Set(requestedRows)]
     .filter((index) => Number.isInteger(index) && index >= 0 && index < rows.length)
     .sort((left, right) => left - right);
-  if (selectedRows.length === 0) return [];
-
-  const lastHeaderRow = selectedRows[selectedRows.length - 1];
+  const lastHeaderRow = selectedRows.at(-1);
+  if (lastHeaderRow === undefined) return [];
   const groupRows = selectedRows.slice(0, -1).map((rowIndex) => rows[rowIndex] ?? []);
   const headings = rows[lastHeaderRow] ?? [];
   const maxColumns = Math.max(
