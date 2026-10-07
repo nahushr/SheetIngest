@@ -85,4 +85,20 @@ describe("SheetIngest import flow", () => {
       },
     });
   });
+
+  it("hides the test-data controls when disabled even with a generator callback", () => {
+    render(
+      <SheetIngest
+        isOpen
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+        onGenerateTestData={vi.fn()}
+        showTestDataGenerator={false}
+        template={template}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Number of records")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Generate test data" })).not.toBeInTheDocument();
+  });
 });

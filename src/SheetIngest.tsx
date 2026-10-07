@@ -321,6 +321,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   mapRow,
   validateRow,
   onGenerateTestData,
+  showTestDataGenerator = true,
   renderStepContent,
   maxRecords = DEFAULT_MAX_RECORDS,
   maxFileSize = DEFAULT_MAX_FILE_SIZE,
@@ -667,7 +668,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
               <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => void handleDownloadTemplate()}>
                 {t.downloadTemplate}
               </Button>
-              {onGenerateTestData && (
+              {showTestDataGenerator && onGenerateTestData && (
                 <>
                   <TextField
                     size="small"

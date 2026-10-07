@@ -87,6 +87,8 @@ export interface SheetIngestProps<Row extends SheetIngestRow = SheetIngestRow> {
   ) => SheetIngestMaybePromise<void | string | SheetIngestIssue | readonly (string | SheetIngestIssue)[]>;
   /** Generate and download entity-specific realistic data in the host app. */
   onGenerateTestData?: (recordCount: number) => SheetIngestMaybePromise<void>;
+  /** Show the test-data count input and button when a generator is provided. Defaults to true. */
+  showTestDataGenerator?: boolean;
   /** Optional custom content rendered below the active step. */
   renderStepContent?: (context: SheetIngestStepContext) => ReactNode;
   /** Maximum non-empty data rows to parse. Defaults to 1,000. */

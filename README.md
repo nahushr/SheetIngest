@@ -155,6 +155,7 @@ The first workbook row can contain merged group labels; the next row contains fi
 | `validateRow` | Return a message, issue object, array of issues, or `undefined` for each row. |
 | `onSubmit` | Receive validated rows and the original uploaded `File`. |
 | `onGenerateTestData` | Generate and download host-specific sample rows for the requested count. |
+| `showTestDataGenerator` | Show or hide the count input and generate button when a callback is supplied. Defaults to `true`. |
 | `maxRecords`, `maxFileSize` | Set parsing limits. Defaults are 1,000 rows and 10 MiB. |
 | `defaultTestDataCount`, `maxTestDataCount` | Set the test-data count input defaults. Defaults are 50 and 10,000. |
 | `allowInvalidSubmit` | Allow submission when rows contain validation errors. Defaults to `false`. |
