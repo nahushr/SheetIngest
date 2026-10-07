@@ -297,7 +297,7 @@ const getCustomColumns = (
           showIcon: true,
           showFlag: true,
           countryCode: "US",
-          format: "international",
+          format: "national",
           ...field.columnOptions?.phone,
         },
       };

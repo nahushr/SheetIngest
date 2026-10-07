@@ -139,7 +139,7 @@ Replace the example `saveContacts` handler with the host application's API call.
 |---|---|
 | Upload file | Accept a CSV or XLSX file, download the grouped sample template, or generate host-provided test data. The header rows are inferred automatically from template field names and aliases. |
 | Match columns | Show the uploaded file and worksheet, suggest one-to-one field matches, and allow each source column to be remapped or ignored. Nested group labels from the workbook remain visible. |
-| Data preview | Show mapped rows and row-level validation issues in SuperDataGrid. Email and phone fields use its linked email and telephone cells, including icons, international phone formatting, and country flags. |
+| Data preview | Show mapped rows and row-level validation issues in SuperDataGrid. Email and phone fields use linked cells with icons, country-specific phone formatting, and country flags. |
 
 The first workbook row can contain merged group labels; the next row contains field headers. SheetIngest detects the field-header row and carries its preceding group row into the column mappings. `templateHeader` changes the header written to the workbook, while `aliases` add names that can be matched automatically. Required fields receive a built-in missing-value check. `mapRow` converts source strings into the host's model; `validateRow` applies entity-specific rules. Errors block submission by default, while warning and informational issues remain visible without blocking it.
 
@@ -161,7 +161,7 @@ The first workbook row can contain merged group labels; the next row contains fi
 | `title`, `translations`, `dialogProps` | Customize the dialog title, labels, and MUI dialog props. |
 | `renderStepContent` | Render host-specific content below the active step. |
 
-Email and phone preview types are inferred from each field's key, label, template header, and aliases. Set `type: "email"` or `type: "phone"` to override inference. Per-field `columnOptions` customize the SuperDataGrid renderer; for example, set `columnOptions.phone.countryCode` to interpret national numbers for a different default country. Email links use `mailto:`, and phone links use `tel:`.
+Email and phone preview types are inferred from each field's key, label, template header, and aliases. Set `type: "email"` or `type: "phone"` to override inference. Phone fields default to country-specific national formatting, including the familiar parentheses for US numbers. Set `columnOptions.phone.format` to `"international"` or `"original"`, and `columnOptions.phone.countryCode` to choose a different default country. Email links use `mailto:`, and phone links use `tel:`.
 
 The exported `SheetIngestProps`, `SheetIngestTemplate`, `SheetIngestGroup`, `SheetIngestField`, `SheetIngestIssue`, and row-context types are available for TypeScript apps.
 
