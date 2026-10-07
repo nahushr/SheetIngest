@@ -1,6 +1,6 @@
 {
   "name": "@simplishelf/sheet-ingest",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "A configurable React spreadsheet import flow for CSV and Excel files.",
   "license": "MIT",
   "repository": {
@@ -61,7 +61,7 @@
     "@mui/icons-material": "^5.15.0",
     "@mui/material": "^5.15.0",
     "@mui/x-data-grid": "^8.17.0",
-    "@simplishelf/super-data-grid": "^0.2.1",
+    "@simplishelf/super-data-grid": "^0.2.1 || ^0.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -76,7 +76,7 @@
     "@mui/icons-material": "^5.15.0",
     "@mui/material": "^5.15.0",
     "@mui/x-data-grid": "^8.17.0",
-    "@simplishelf/super-data-grid": "^0.2.1",
+    "@simplishelf/super-data-grid": "^0.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "@testing-library/jest-dom": "^6.9.1",
