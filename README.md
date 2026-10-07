@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://stackblitz.com/github/nahushr/SheetIngest?file=examples/vite/src/App.tsx"><img alt="Open the SheetIngest example in StackBlitz" src="https://developer.stackblitz.com/img/open_in_stackblitz.svg" /></a>
+  <a href="https://stackblitz.com/github/nahushr/SheetIngest/tree/main/examples/vite?file=src/App.tsx"><img alt="Open the SheetIngest example in StackBlitz" src="https://developer.stackblitz.com/img/open_in_stackblitz.svg" /></a>
 </p>
 
 SheetIngest is a configurable React wizard for importing CSV and Excel files. Define grouped fields and supply your own mapping, validation, test-data, and submit callbacks. The package handles file upload, automatic header detection, column matching, and data preview.
@@ -20,7 +20,7 @@ SheetIngest is a configurable React wizard for importing CSV and Excel files. De
 
 | Online | Local |
 |---|---|
-| [Open the Vite example in StackBlitz](https://stackblitz.com/github/nahushr/SheetIngest?file=examples/vite/src/App.tsx) | `npm ci` → `npm run dev:example` → [localhost:7013](http://localhost:7013) |
+| [Open the Vite example in StackBlitz](https://stackblitz.com/github/nahushr/SheetIngest/tree/main/examples/vite?file=src/App.tsx) | `npm ci` → `npm run dev:example` → [localhost:7013](http://localhost:7013) |
 
 | Example | What to try |
 |---|---|

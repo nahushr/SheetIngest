@@ -25,7 +25,6 @@ import type {
   SheetIngestIssue,
   SheetIngestTemplate,
 } from "@simplishelf/sheet-ingest";
-import logoUrl from "../../../assets/sheet-ingest-logo.svg";
 
 type ContactRow = {
   firstName: string;
@@ -211,7 +210,7 @@ export default function App() {
     <main className="demo-shell">
       <Container maxWidth="lg" disableGutters>
         <header className="demo-topbar">
-          <img className="demo-logo" src={logoUrl} alt="SheetIngest" />
+          <img className="demo-logo" src="/sheet-ingest-logo.svg" alt="SheetIngest" />
           <span className="demo-topbar__tag">React example</span>
         </header>
 
