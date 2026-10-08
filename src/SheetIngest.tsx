@@ -111,6 +111,12 @@ const DEFAULT_TRANSLATIONS: SheetIngestTranslations = {
 
 type WizardStep = "upload" | "mapping" | "preview";
 
+const STEP_HELP_KEYS: Record<WizardStep, keyof Pick<SheetIngestTranslations, "fileHelp" | "mappingHelp" | "previewHelp">> = {
+  upload: "fileHelp",
+  mapping: "mappingHelp",
+  preview: "previewHelp",
+};
+
 interface ProcessedRow<Row extends SheetIngestRow> {
   rowNumber: number;
   data: Row;
@@ -349,6 +355,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   const fields = useMemo(() => getTemplateFields(template), [template]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<WizardStep>("upload");
+  const stepHelp = t[STEP_HELP_KEYS[step]];
   const [file, setFile] = useState<File | null>(null);
   const [sheetName, setSheetName] = useState("");
   const [matrix, setMatrix] = useState<string[][]>([]);
@@ -636,7 +643,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
         </Stepper>
       </Box>
       <Box className={styles.subtitleBanner}>
-        {step === "upload" ? t.fileHelp : step === "mapping" ? t.mappingHelp : t.previewHelp}
+        {stepHelp}
       </Box>
       <DialogContent className={`${styles.dialogContent} ${step === "upload" ? styles.uploadContent : ""}`}>
         {busy && <LinearProgress className={styles.progress} sx={{ mb: 2 }} />}
