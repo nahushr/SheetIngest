@@ -13,8 +13,9 @@
     "@mui/icons-material": "^5.15.0",
     "@mui/material": "^5.15.0",
     "@mui/x-data-grid": "^8.17.0",
+    "@simplishelf/opscards": "^0.2.3",
     "@simplishelf/sheet-ingest": "file:../..",
-    "@simplishelf/super-data-grid": "^0.3.4",
+    "@simplishelf/super-data-grid": "^0.3.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

@@ -1,47 +1,3 @@
-.dialogPaper {
-  width: calc(100% - 32px);
-  max-width: 672px !important;
-  max-height: 85vh;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px !important;
-  background: #ffffff;
-  box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.25) !important;
-}
-
-.dialogHeader {
-  flex: 0 0 auto;
-  padding: 16px 24px !important;
-  border-bottom: 1px solid #164e63;
-  background: #083344;
-}
-
-.headerContent {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.dialogTitleText {
-  color: #ffffff;
-  font-size: 1rem !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.025em;
-}
-
-.closeButton {
-  flex: 0 0 auto;
-  border-radius: 8px !important;
-  color: #a5f3fc !important;
-  transition: color 150ms ease, background-color 150ms ease;
-}
-
-.closeButton:hover {
-  color: #ffffff !important;
-  background: rgb(255 255 255 / 0.1) !important;
-}
-
 .stepperBar {
   flex: 0 0 auto;
   padding: 12px 24px;
@@ -422,9 +378,6 @@
   flex: 0 0 auto;
   justify-content: space-between !important;
   gap: 12px;
-  padding: 14px 24px !important;
-  border-top: 1px solid #e2e8f0;
-  background: #f8fafc;
 }
 
 .cancelButton {
@@ -460,10 +413,8 @@
     min-width: 440px;
   }
 
-  .dialogHeader,
   .dialogActions {
-    padding-right: 16px !important;
-    padding-left: 16px !important;
+    gap: 8px;
   }
 
   .dropzone {

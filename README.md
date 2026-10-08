@@ -32,12 +32,13 @@ SheetIngest is a configurable React wizard for importing CSV and Excel files. De
 ## Install
 
 ```sh
-npm install @simplishelf/sheet-ingest @simplishelf/super-data-grid
+npm install @simplishelf/sheet-ingest @simplishelf/super-data-grid @simplishelf/opscards
 ```
 
-The package uses React 18+, Material UI, Emotion, and SuperDataGrid as peer dependencies. Install compatible versions in the host app. Import the package stylesheet once from the app entry point:
+The package uses React 18+, Material UI, Emotion, SuperDataGrid, and OpsCards as peer dependencies. Install compatible versions in the host app. Import the shared modal stylesheet and the importer stylesheet once from the app entry point:
 
 ```tsx
+import "@simplishelf/opscards/style.css";
 import "@simplishelf/sheet-ingest/style.css";
 ```
 
@@ -52,6 +53,7 @@ import type {
   SheetIngestTemplate,
   SheetIngestIssue,
 } from "@simplishelf/sheet-ingest";
+import "@simplishelf/opscards/style.css";
 import "@simplishelf/sheet-ingest/style.css";
 
 type Contact = {
@@ -159,7 +161,7 @@ The first workbook row can contain merged group labels; the next row contains fi
 | `maxRecords`, `maxFileSize` | Set parsing limits. Defaults are 1,000 rows and 10 MiB. |
 | `defaultTestDataCount`, `maxTestDataCount` | Set the test-data count input defaults. Defaults are 50 and 10,000. |
 | `allowInvalidSubmit` | Allow submission when rows contain validation errors. Defaults to `false`. |
-| `title`, `translations`, `dialogProps` | Customize the dialog title, labels, and MUI dialog props. |
+| `title`, `translations`, `dialogProps` | Customize the dialog title, labels, and shared OpsCards modal props. |
 | `renderStepContent` | Render host-specific content below the active step. |
 
 Email and phone preview types are inferred from each field's key, label, template header, and aliases. Set `type: "email"` or `type: "phone"` to override inference. Phone fields default to country-specific national formatting, including the familiar parentheses for US numbers. Set `columnOptions.phone.format` to `"international"` or `"original"`, and `columnOptions.phone.countryCode` to choose a different default country. Email links use `mailto:`, and phone links use `tel:`.

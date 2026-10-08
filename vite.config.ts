@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
-const peerExternal = /^(react|react-dom|@emotion\/|@mui\/|@simplishelf\/super-data-grid)/;
+const peerExternal = /^(react|react-dom|@emotion\/|@mui\/|@simplishelf\/(?:super-data-grid|opscards))/;
 
 export default defineConfig({
   plugins: [react()],

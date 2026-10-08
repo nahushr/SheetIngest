@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import "@simplishelf/opscards/style.css";
 import "@simplishelf/sheet-ingest/style.css";
 import App from "./App";
 import "./example.css";

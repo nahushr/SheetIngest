@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { DialogProps } from "@mui/material/Dialog";
+import type { OpsModalProps } from "@simplishelf/opscards";
 import type {
   SuperDataGridColumnOptions,
   SuperDataGridColumnType,
@@ -103,8 +103,11 @@ export interface SheetIngestProps<Row extends SheetIngestRow = SheetIngestRow> {
   allowInvalidSubmit?: boolean;
   /** Override the wizard title. */
   title?: string;
-  /** Override dialog sizing and styling. */
-  dialogProps?: Omit<Partial<DialogProps>, "open" | "onClose" | "children">;
+  /** Override the shared OpsCards modal sizing and styling. */
+  dialogProps?: Omit<
+    Partial<OpsModalProps>,
+    "open" | "onClose" | "children" | "title" | "subtitle"
+  >;
   /** Localized labels for common controls. */
   translations?: Partial<SheetIngestTranslations>;
 }

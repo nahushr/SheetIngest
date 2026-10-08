@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import {
+  OpsModal as Dialog,
+  OpsModalActions as DialogActions,
+  OpsModalContent as DialogContent,
+  OpsModalHeader as DialogTitle,
+} from "@simplishelf/opscards";
+import {
   Alert,
   Box,
   Button,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Divider,
   FormControl,
   IconButton,
@@ -607,29 +609,22 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
       onClose={handleClose}
       fullWidth={dialogProps?.fullWidth ?? true}
       maxWidth={dialogProps?.maxWidth ?? "sm"}
-      aria-labelledby="sheet-ingest-title"
+      aria-labelledby={dialogProps?.["aria-labelledby"] ?? "sheet-ingest-title"}
       PaperProps={{
         ...dialogProps?.PaperProps,
-        className: `${dialogProps?.PaperProps?.className ?? ""} ${styles.dialogPaper}`.trim(),
+        className: dialogProps?.PaperProps?.className,
       }}
     >
-      <DialogTitle id="sheet-ingest-title" className={styles.dialogHeader}>
-        <Box className={styles.headerContent}>
-          <div>
-            <Typography component="h2" className={styles.dialogTitleText}>
-              {title ?? t.title}
-            </Typography>
-          </div>
-          <IconButton
-              className={styles.closeButton}
-              aria-label={t.close}
-              title={t.close}
-              onClick={handleClose}
-              size="small"
-            >
-              <CloseIcon />
-          </IconButton>
-        </Box>
+      <DialogTitle id="sheet-ingest-title">
+        <Typography component="h2">{title ?? t.title}</Typography>
+        <IconButton
+          aria-label={t.close}
+          title={t.close}
+          onClick={handleClose}
+          size="small"
+        >
+          <CloseIcon />
+        </IconButton>
       </DialogTitle>
       <Box className={styles.stepperBar}>
         <Stepper className={styles.stepper} activeStep={activeStepIndex}>
