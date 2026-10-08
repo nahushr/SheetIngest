@@ -1,0 +1,481 @@
+.dialogPaper {
+  width: calc(100% - 32px);
+  max-width: 672px !important;
+  max-height: 85vh;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px !important;
+  background: #ffffff;
+  box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.25) !important;
+}
+
+.dialogHeader {
+  flex: 0 0 auto;
+  padding: 16px 24px !important;
+  border-bottom: 1px solid #164e63;
+  background: #083344;
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dialogTitleText {
+  color: #ffffff;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.025em;
+}
+
+.closeButton {
+  flex: 0 0 auto;
+  border-radius: 8px !important;
+  color: #a5f3fc !important;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.closeButton:hover {
+  color: #ffffff !important;
+  background: rgb(255 255 255 / 0.1) !important;
+}
+
+.stepperBar {
+  flex: 0 0 auto;
+  padding: 12px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.stepper {
+  align-items: center;
+}
+
+.stepper :global(.MuiStep-root) {
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+.stepper :global(.MuiStepConnector-root) {
+  flex: 1 1 auto;
+  margin: 0 12px;
+}
+
+.stepper :global(.MuiStepConnector-line) {
+  border-color: #e2e8f0;
+  border-top-width: 1px;
+}
+
+.stepper :global(.MuiStepIcon-root) {
+  color: #e2e8f0;
+}
+
+.stepper :global(.MuiStepIcon-text) {
+  fill: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.stepper :global(.MuiStepIcon-root.Mui-active),
+.stepper :global(.MuiStepIcon-root.Mui-completed) {
+  color: #0e7490;
+}
+
+.stepper :global(.MuiStepIcon-root.Mui-active .MuiStepIcon-text),
+.stepper :global(.MuiStepIcon-root.Mui-completed .MuiStepIcon-text) {
+  fill: #ffffff;
+  font-weight: 700;
+}
+
+.stepLabel :global(.MuiStepLabel-iconContainer) {
+  padding-right: 8px;
+}
+
+.stepLabel :global(.MuiStepLabel-label) {
+  margin-top: 0 !important;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.stepLabel :global(.MuiStepLabel-label.Mui-active),
+.stepLabel :global(.MuiStepLabel-label.Mui-completed) {
+  color: #0e7490;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.subtitleBanner {
+  flex: 0 0 auto;
+  padding: 8px 24px;
+  border-bottom: 1px solid rgb(207 250 254 / 0.7);
+  background: rgb(236 254 255 / 0.5);
+  color: #64748b;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.dialogContent {
+  min-height: 360px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 24px !important;
+  color: #0f172a;
+}
+
+.progress {
+  margin: 16px 24px 0 !important;
+  color: #0e7490 !important;
+}
+
+.alert {
+  margin: 16px 24px 0 !important;
+}
+
+.uploadContent {
+  padding: 0 !important;
+}
+
+.uploadStep {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0 !important;
+}
+
+.dropzone {
+  cursor: pointer;
+  margin: 16px 24px !important;
+  padding: 32px !important;
+  border: 2px dashed #a5f3fc !important;
+  border-radius: 12px !important;
+  background: rgb(236 254 255 / 0.3) !important;
+  text-align: center;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.dropzone:hover {
+  border-color: #0e7490 !important;
+  background: rgb(236 254 255 / 0.6) !important;
+}
+
+.uploadIcon {
+  width: 40px !important;
+  height: 40px !important;
+  margin: 0 auto 4px;
+  color: #0e7490 !important;
+}
+
+.dropzoneHeadline {
+  color: #0f172a;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+}
+
+.dropzoneHelper {
+  margin-top: 8px !important;
+  color: #94a3b8;
+  font-size: 0.75rem !important;
+}
+
+.uploadButton,
+.primaryButton {
+  border-radius: 8px !important;
+  background: #06b6d4 !important;
+  color: #083344 !important;
+  font-size: 0.875rem !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.12) !important;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.uploadButton {
+  margin-top: 8px !important;
+  padding: 8px 16px !important;
+}
+
+.uploadButton:hover,
+.primaryButton:hover {
+  background: #22d3ee !important;
+}
+
+.primaryButton {
+  min-height: 36px;
+  padding: 8px 16px !important;
+}
+
+.primaryButton:global(.Mui-disabled) {
+  background: #e2e8f0 !important;
+  color: #94a3b8 !important;
+  box-shadow: none !important;
+}
+
+.utilityBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px;
+  border-top: 1px solid #f1f5f9;
+  background: rgb(248 250 252 / 0.7);
+}
+
+.downloadButton,
+.generateButton,
+.navigationButton,
+.cancelButton {
+  min-height: 32px;
+  border-radius: 8px !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+.downloadButton {
+  padding: 6px 12px !important;
+  border-color: #e2e8f0 !important;
+  background: #ffffff !important;
+  color: #0e7490 !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+}
+
+.downloadButton:hover {
+  border-color: #a5f3fc !important;
+  background: #ecfeff !important;
+}
+
+.generateButton {
+  padding: 6px 12px !important;
+  border: 1px solid #a5f3fc !important;
+  background: #ecfeff !important;
+  color: #0e7490 !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+}
+
+.generateButton:hover {
+  background: #cffafe !important;
+}
+
+.generateButton :global(.MuiButton-startIcon) {
+  color: #0891b2;
+}
+
+.recordCountField {
+  width: 80px;
+}
+
+.recordCountControl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recordCountLabel {
+  color: #64748b;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.recordCountField :global(.MuiInputLabel-root) {
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.recordCountField :global(.MuiOutlinedInput-root) {
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font-family: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.recordCountField :global(.MuiOutlinedInput-notchedOutline) {
+  border-color: #cbd5e1;
+}
+
+.recordCountField :global(.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-width: 1px;
+  border-color: #0e7490;
+}
+
+.recordCountField :global(.MuiOutlinedInput-root.Mui-focused) {
+  box-shadow: 0 0 0 2px rgb(6 182 212 / 0.2);
+}
+
+.mappingTitle {
+  color: #0f172a;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+}
+
+.groupCard {
+  overflow: hidden;
+  border-color: #e2e8f0 !important;
+  border-radius: 10px !important;
+  background: #ffffff;
+}
+
+.groupHeader {
+  padding: 8px 12px !important;
+  border-bottom: 1px solid #cffafe;
+  background: #ecfeff !important;
+}
+
+.groupTitle {
+  color: #0e7490;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.selectControl :global(.MuiSelect-select) {
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.selectControl :global(.MuiOutlinedInput-notchedOutline) {
+  border-color: #cbd5e1;
+}
+
+.selectControl:global(.Mui-focused) :global(.MuiOutlinedInput-notchedOutline) {
+  border-width: 1px;
+  border-color: #0e7490;
+}
+
+.selectControl:global(.Mui-focused) {
+  box-shadow: 0 0 0 2px rgb(6 182 212 / 0.2);
+}
+
+.menuRoot {
+  z-index: 1400 !important;
+}
+
+.menuPaper {
+  max-height: 240px !important;
+  padding: 6px 4px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px !important;
+  background: #ffffff;
+  box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.1),
+    0 4px 6px -4px rgb(15 23 42 / 0.1) !important;
+}
+
+.menuList {
+  padding: 0 !important;
+}
+
+.menuItem {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 2px !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  color: #334155;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  transition: color 100ms ease-in-out, background-color 100ms ease-in-out;
+}
+
+.menuItem:hover {
+  background: #f0fdfa !important;
+  color: #0e7490 !important;
+}
+
+.menuItem:global(.Mui-selected) {
+  background: #ecfeff !important;
+  color: #0e7490 !important;
+  font-weight: 600 !important;
+}
+
+.menuItem:global(.Mui-selected:hover) {
+  background: #cffafe !important;
+}
+
+.checkIcon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: #0891b2;
+}
+
+.dialogActions {
+  flex: 0 0 auto;
+  justify-content: space-between !important;
+  gap: 12px;
+  padding: 14px 24px !important;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.cancelButton {
+  padding: 8px 16px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #475569 !important;
+}
+
+.cancelButton:hover {
+  background: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+.navigationButton {
+  padding: 8px 16px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #475569 !important;
+}
+
+.navigationButton:hover {
+  background: #f1f5f9 !important;
+}
+
+@media (max-width: 600px) {
+  .stepperBar {
+    overflow-x: auto;
+    padding: 12px 16px;
+  }
+
+  .stepper {
+    min-width: 440px;
+  }
+
+  .dialogHeader,
+  .dialogActions {
+    padding-right: 16px !important;
+    padding-left: 16px !important;
+  }
+
+  .dropzone {
+    margin: 16px !important;
+    padding: 24px 16px !important;
+  }
+
+  .utilityBar {
+    padding: 12px 16px;
+  }
+
+  .recordCountField {
+    width: 100%;
+  }
+}

@@ -28,6 +28,7 @@ import {
 import type { GridColumnGroupingModel } from "@mui/x-data-grid";
 import {
   AutoAwesome as AutoAwesomeIcon,
+  Check as CheckIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
   CloudUpload as CloudUploadIcon,
   Close as CloseIcon,
@@ -62,6 +63,13 @@ import type {
   SheetIngestStepContext,
   SheetIngestTranslations,
 } from "./types";
+import styles from "./SheetIngest.module.css";
+
+const selectMenuProps = {
+  classes: { root: styles.menuRoot },
+  PaperProps: { className: styles.menuPaper },
+  MenuListProps: { className: styles.menuList },
+};
 
 const DEFAULT_TRANSLATIONS: SheetIngestTranslations = {
   title: "Import data",
@@ -598,56 +606,77 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
       open={isOpen}
       onClose={handleClose}
       fullWidth={dialogProps?.fullWidth ?? true}
-      maxWidth={dialogProps?.maxWidth ?? "xl"}
+      maxWidth={dialogProps?.maxWidth ?? "sm"}
       aria-labelledby="sheet-ingest-title"
+      PaperProps={{
+        ...dialogProps?.PaperProps,
+        className: `${dialogProps?.PaperProps?.className ?? ""} ${styles.dialogPaper}`.trim(),
+      }}
     >
-      <DialogTitle id="sheet-ingest-title" sx={{ pb: 1 }}>
-        <Stack spacing={2}>
-          <Box display="flex" alignItems="center" justifyContent="space-between">
-            <Typography variant="h6">{title ?? t.title}</Typography>
-            <IconButton aria-label={t.close} title={t.close} onClick={handleClose} size="small">
+      <DialogTitle id="sheet-ingest-title" className={styles.dialogHeader}>
+        <Box className={styles.headerContent}>
+          <div>
+            <Typography component="h2" className={styles.dialogTitleText}>
+              {title ?? t.title}
+            </Typography>
+          </div>
+          <IconButton
+              className={styles.closeButton}
+              aria-label={t.close}
+              title={t.close}
+              onClick={handleClose}
+              size="small"
+            >
               <CloseIcon />
-            </IconButton>
-          </Box>
-          <Stepper activeStep={activeStepIndex} alternativeLabel>
-            {STEPS.map((item) => (
-              <Step key={item}>
-                <StepLabel>{stepLabels[item]}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </Stack>
+          </IconButton>
+        </Box>
       </DialogTitle>
-      <DialogContent dividers sx={{ minHeight: { xs: 360, md: 460 }, pt: 3 }}>
-        {busy && <LinearProgress sx={{ mb: 2 }} />}
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+      <Box className={styles.stepperBar}>
+        <Stepper className={styles.stepper} activeStep={activeStepIndex}>
+          {STEPS.map((item) => (
+            <Step className={styles.step} key={item}>
+              <StepLabel className={styles.stepLabel}>{stepLabels[item]}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+      </Box>
+      <Box className={styles.subtitleBanner}>
+        {step === "upload" ? t.fileHelp : step === "mapping" ? t.mappingHelp : t.previewHelp}
+      </Box>
+      <DialogContent className={`${styles.dialogContent} ${step === "upload" ? styles.uploadContent : ""}`}>
+        {busy && <LinearProgress className={styles.progress} sx={{ mb: 2 }} />}
+        {error && <Alert className={styles.alert} severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {success && <Alert className={styles.alert} severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
         {step === "upload" && (
-          <Stack spacing={2}>
-            <Typography color="text.secondary">{t.fileHelp}</Typography>
+          <Stack className={styles.uploadStep}>
             <Box
+              className={styles.dropzone}
+              onClick={(event) => {
+                if ((event.target as HTMLElement).closest("button")) return;
+                fileInputRef.current?.click();
+              }}
               onDragOver={(event) => event.preventDefault()}
               onDrop={handleDrop}
-              sx={{
-                border: "1px dashed",
-                borderColor: "divider",
-                borderRadius: 2,
-                bgcolor: "action.hover",
-                p: { xs: 3, md: 5 },
-                textAlign: "center",
-              }}
             >
               <Stack spacing={1.5} alignItems="center">
-                {file ? <FilePresentIcon color="primary" fontSize="large" /> : <CloudUploadIcon color="primary" fontSize="large" />}
-                <Typography variant="subtitle1" fontWeight={600}>
+                {file ? (
+                  <FilePresentIcon className={styles.uploadIcon} />
+                ) : (
+                  <CloudUploadIcon className={styles.uploadIcon} />
+                )}
+                <Typography className={styles.dropzoneHeadline} variant="subtitle1" fontWeight={600}>
                   {file?.name ?? t.uploadFile}
                 </Typography>
                 {file && <Typography variant="body2" color="text.secondary">{(file.size / 1024).toFixed(1)} KB</Typography>}
                 <Button
                   variant="contained"
+                  className={styles.uploadButton}
                   startIcon={<CloudUploadIcon />}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
                   disabled={busy}
                 >
                   {file ? t.chooseFile : t.uploadFile}
@@ -660,26 +689,40 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                   onChange={handleFileInput}
                   aria-label={t.uploadFile}
                 />
-                <Typography variant="caption" color="text.secondary">or drop a file here</Typography>
+                <Typography className={styles.dropzoneHelper} variant="caption">or drop a file here</Typography>
               </Stack>
             </Box>
-            <Divider />
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }}>
-              <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => void handleDownloadTemplate()}>
+            <Stack className={styles.utilityBar} direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }}>
+              <Button className={styles.downloadButton} variant="outlined" startIcon={<DownloadIcon />} onClick={() => void handleDownloadTemplate()}>
                 {t.downloadTemplate}
               </Button>
               {showTestDataGenerator && onGenerateTestData && (
                 <>
-                  <TextField
-                    size="small"
-                    type="number"
-                    label={t.testRecordCount}
-                    value={testDataCount}
-                    onChange={(event) => setTestDataCount(Number(event.target.value))}
-                    inputProps={{ min: 1, max: maxTestDataCount, step: 1 }}
-                    sx={{ width: { xs: "100%", sm: 190 } }}
-                  />
+                  <Box className={styles.recordCountControl}>
+                    <Typography
+                      className={styles.recordCountLabel}
+                      component="label"
+                      htmlFor="sheet-ingest-test-record-count"
+                    >
+                      {t.testRecordCount}
+                    </Typography>
+                    <TextField
+                      id="sheet-ingest-test-record-count"
+                      size="small"
+                      type="number"
+                      className={styles.recordCountField}
+                      value={testDataCount}
+                      onChange={(event) => setTestDataCount(Number(event.target.value))}
+                      inputProps={{
+                        min: 1,
+                        max: maxTestDataCount,
+                        step: 1,
+                        "aria-label": t.testRecordCount,
+                      }}
+                    />
+                  </Box>
                   <Button
+                    className={styles.generateButton}
                     variant="text"
                     startIcon={<AutoAwesomeIcon />}
                     onClick={() => void handleGenerateTestData()}
@@ -697,8 +740,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
           <Stack spacing={2}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between">
               <Box>
-                <Typography variant="subtitle1" fontWeight={600}>{t.matchColumns}</Typography>
-                <Typography variant="body2" color="text.secondary">{t.mappingHelp}</Typography>
+                <Typography className={styles.mappingTitle} variant="subtitle1" fontWeight={600}>{t.matchColumns}</Typography>
               </Box>
               <Box sx={{ textAlign: { sm: "right" } }}>
                 <Typography variant="body2" fontWeight={600}>{file?.name}</Typography>
@@ -709,9 +751,9 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
             </Stack>
             <Stack spacing={2}>
               {template.groups.map((group) => (
-                <Paper key={group.label} variant="outlined" sx={{ overflow: "hidden" }}>
-                  <Box sx={{ px: 2, py: 1, bgcolor: "action.hover" }}>
-                    <Typography variant="subtitle2" fontWeight={700}>{group.label}</Typography>
+                <Paper className={styles.groupCard} key={group.label} variant="outlined" sx={{ overflow: "hidden" }}>
+                  <Box className={styles.groupHeader} sx={{ px: 2, py: 1, bgcolor: "action.hover" }}>
+                    <Typography className={styles.groupTitle} variant="subtitle2" fontWeight={700}>{group.label}</Typography>
                   </Box>
                   <Stack divider={<Divider flexItem />}>
                     {group.fields.map((field) => {
@@ -728,6 +770,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                           direction={{ xs: "column", md: "row" }}
                           spacing={1.5}
                           alignItems={{ md: "center" }}
+                          className={styles.mappingRow}
                           sx={{ px: 2, py: 1.25 }}
                         >
                           <Box sx={{ flex: "1 1 30%", minWidth: 180 }}>
@@ -740,26 +783,36 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                           <FormControl size="small" sx={{ flex: "1 1 38%", minWidth: 190 }}>
                             <InputLabel id={`sheet-ingest-map-${field.key}`}>{t.matchColumns}</InputLabel>
                             <Select
+                              className={styles.selectControl}
                               labelId={`sheet-ingest-map-${field.key}`}
                               label={t.matchColumns}
                               value={sourceIndex ?? ""}
+                              MenuProps={selectMenuProps}
                               onChange={(event) => {
                                 const value = event.target.value === "" ? null : Number(event.target.value);
                                 handleMappingChange(field.key, value);
                               }}
                             >
-                              <MenuItem value=""><em>{t.noMapping}</em></MenuItem>
+                              <MenuItem className={styles.menuItem} value="">
+                                <em>{t.noMapping}</em>
+                                {sourceIndex == null && <CheckIcon className={styles.checkIcon} />}
+                              </MenuItem>
                               {columns.map((column) => (
                                 <MenuItem
+                                  className={styles.menuItem}
                                   key={column.index}
                                   value={column.index}
                                   disabled={unavailableIndices.has(column.index)}
                                 >
                                   {column.group ? `${column.group} / ` : ""}{column.header || `Column ${column.index + 1}`}
+                                  {sourceIndex === column.index && <CheckIcon className={styles.checkIcon} />}
                                 </MenuItem>
                               ))}
                               <Divider />
-                              <MenuItem value={-1}>{t.ignoreColumn}</MenuItem>
+                              <MenuItem className={styles.menuItem} value={-1}>
+                                {t.ignoreColumn}
+                                {sourceIndex === -1 && <CheckIcon className={styles.checkIcon} />}
+                              </MenuItem>
                             </Select>
                           </FormControl>
                           <Box sx={{ flex: "1 1 32%", minWidth: 160 }}>
@@ -785,8 +838,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
           <Stack spacing={1.5}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} justifyContent="space-between">
               <Box>
-                <Typography variant="subtitle1" fontWeight={600}>{t.dataPreview}</Typography>
-                <Typography variant="body2" color="text.secondary">{t.previewHelp}</Typography>
+                <Typography className={styles.mappingTitle} variant="subtitle1" fontWeight={600}>{t.dataPreview}</Typography>
               </Box>
               <Stack direction="row" spacing={1}>
                 <Chip size="small" color="success" icon={<CheckCircleOutlineIcon />} label={`${componentRows - errorRowCount} ${t.valid}`} />
@@ -820,21 +872,21 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
 
         {renderStepContent?.(contextForStep)}
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2, justifyContent: "space-between" }}>
-        <Button onClick={handleClose} disabled={busy}>{t.cancel}</Button>
+      <DialogActions className={styles.dialogActions}>
+        <Button className={styles.cancelButton} onClick={handleClose} disabled={busy}>{t.cancel}</Button>
         <Stack direction="row" spacing={1}>
           {activeStepIndex > 0 && (
-            <Button startIcon={<NavigateBeforeIcon />} onClick={goBack} disabled={busy}>
+            <Button className={styles.navigationButton} startIcon={<NavigateBeforeIcon />} onClick={goBack} disabled={busy}>
               {t.back}
             </Button>
           )}
           {step === "mapping" && (
-            <Button variant="contained" endIcon={<NavigateNextIcon />} onClick={goNext} disabled={busy || records.length === 0}>
+            <Button className={styles.primaryButton} variant="contained" endIcon={<NavigateNextIcon />} onClick={goNext} disabled={busy || records.length === 0}>
               {busy ? "Preparing…" : t.next}
             </Button>
           )}
           {step === "preview" && (
-            <Button variant="contained" onClick={() => void handleSubmit()} disabled={busy || rowCount === 0 || (!allowInvalidSubmit && errorRowCount > 0)}>
+            <Button className={styles.primaryButton} variant="contained" onClick={() => void handleSubmit()} disabled={busy || rowCount === 0 || (!allowInvalidSubmit && errorRowCount > 0)}>
               {busy ? "Importing…" : `${t.submit} (${rowCount})`}
             </Button>
           )}
