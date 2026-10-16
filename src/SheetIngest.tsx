@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import {
-  OpsModal as Dialog,
-  OpsModalActions as DialogActions,
-  OpsModalContent as DialogContent,
-  OpsModalHeader as DialogTitle,
-} from "@simplishelf/opscards";
+import { PolyFormModal } from "@simplishelf/polyform";
 import {
   Alert,
   Box,
@@ -13,7 +8,6 @@ import {
   Chip,
   Divider,
   FormControl,
-  IconButton,
   InputLabel,
   LinearProgress,
   MenuItem,
@@ -33,7 +27,6 @@ import {
   Check as CheckIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
   CloudUpload as CloudUploadIcon,
-  Close as CloseIcon,
   Download as DownloadIcon,
   ErrorOutline as ErrorOutlineIcon,
   FilePresent as FilePresentIcon,
@@ -610,29 +603,42 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   );
 
   return (
-    <Dialog
+    <PolyFormModal
       {...dialogProps}
       open={isOpen}
       onClose={handleClose}
       fullWidth={dialogProps?.fullWidth ?? true}
       maxWidth={dialogProps?.maxWidth ?? "sm"}
-      aria-labelledby={dialogProps?.["aria-labelledby"] ?? "sheet-ingest-title"}
-      PaperProps={{
-        ...dialogProps?.PaperProps,
-        className: dialogProps?.PaperProps?.className,
+      title={title ?? t.title}
+      closeButtonLabel={t.close}
+      classNames={{
+        ...dialogProps?.classNames,
+        content: `${styles.dialogContent} ${step === "upload" ? styles.uploadContent : ""} ${dialogProps?.classNames?.content ?? ""}`,
+        actions: `${styles.dialogActions} ${dialogProps?.classNames?.actions ?? ""}`,
       }}
+      actions={(
+        <>
+          <Button className={styles.cancelButton} onClick={handleClose} disabled={busy}>{t.cancel}</Button>
+          <Stack direction="row" spacing={1}>
+            {activeStepIndex > 0 && (
+              <Button className={styles.navigationButton} startIcon={<NavigateBeforeIcon />} onClick={goBack} disabled={busy}>
+                {t.back}
+              </Button>
+            )}
+            {step === "mapping" && (
+              <Button className={styles.primaryButton} variant="contained" endIcon={<NavigateNextIcon />} onClick={goNext} disabled={busy || records.length === 0}>
+                {busy ? "Preparing…" : t.next}
+              </Button>
+            )}
+            {step === "preview" && (
+              <Button className={styles.primaryButton} variant="contained" onClick={() => void handleSubmit()} disabled={busy || rowCount === 0 || (!allowInvalidSubmit && errorRowCount > 0)}>
+                {busy ? "Importing…" : `${t.submit} (${rowCount})`}
+              </Button>
+            )}
+          </Stack>
+        </>
+      )}
     >
-      <DialogTitle id="sheet-ingest-title">
-        <Typography component="h2">{title ?? t.title}</Typography>
-        <IconButton
-          aria-label={t.close}
-          title={t.close}
-          onClick={handleClose}
-          size="small"
-        >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
       <Box className={styles.stepperBar}>
         <Stepper className={styles.stepper} activeStep={activeStepIndex}>
           {STEPS.map((item) => (
@@ -645,7 +651,6 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
       <Box className={styles.subtitleBanner}>
         {stepHelp}
       </Box>
-      <DialogContent className={`${styles.dialogContent} ${step === "upload" ? styles.uploadContent : ""}`}>
         {busy && <LinearProgress className={styles.progress} sx={{ mb: 2 }} />}
         {error && <Alert className={styles.alert} severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {success && <Alert className={styles.alert} severity="success" sx={{ mb: 2 }}>{success}</Alert>}
@@ -873,28 +878,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
         )}
 
         {renderStepContent?.(contextForStep)}
-      </DialogContent>
-      <DialogActions className={styles.dialogActions}>
-        <Button className={styles.cancelButton} onClick={handleClose} disabled={busy}>{t.cancel}</Button>
-        <Stack direction="row" spacing={1}>
-          {activeStepIndex > 0 && (
-            <Button className={styles.navigationButton} startIcon={<NavigateBeforeIcon />} onClick={goBack} disabled={busy}>
-              {t.back}
-            </Button>
-          )}
-          {step === "mapping" && (
-            <Button className={styles.primaryButton} variant="contained" endIcon={<NavigateNextIcon />} onClick={goNext} disabled={busy || records.length === 0}>
-              {busy ? "Preparing…" : t.next}
-            </Button>
-          )}
-          {step === "preview" && (
-            <Button className={styles.primaryButton} variant="contained" onClick={() => void handleSubmit()} disabled={busy || rowCount === 0 || (!allowInvalidSubmit && errorRowCount > 0)}>
-              {busy ? "Importing…" : `${t.submit} (${rowCount})`}
-            </Button>
-          )}
-        </Stack>
-      </DialogActions>
-    </Dialog>
+    </PolyFormModal>
   );
 };
 

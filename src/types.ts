@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { OpsModalProps } from "@simplishelf/opscards";
+import type { PolyFormModalProps } from "@simplishelf/polyform";
 import type {
   SuperDataGridColumnOptions,
   SuperDataGridColumnType,
@@ -103,11 +103,8 @@ export interface SheetIngestProps<Row extends SheetIngestRow = SheetIngestRow> {
   allowInvalidSubmit?: boolean;
   /** Override the wizard title. */
   title?: string;
-  /** Override the shared OpsCards modal sizing and styling. */
-  dialogProps?: Omit<
-    Partial<OpsModalProps>,
-    "open" | "onClose" | "children" | "title" | "subtitle"
-  >;
+  /** Override the shared PolyForm modal sizing and styling. */
+  dialogProps?: Pick<PolyFormModalProps, "maxWidth" | "fullWidth" | "classNames">;
   /** Localized labels for common controls. */
   translations?: Partial<SheetIngestTranslations>;
 }
