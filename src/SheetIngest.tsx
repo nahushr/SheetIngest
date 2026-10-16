@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import { PolyFormModal } from "@simplishelf/polyform";
+import { OpsModalDialog } from "@simplishelf/opscards";
 import {
   Alert,
   Box,
@@ -603,7 +603,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   );
 
   return (
-    <PolyFormModal
+    <OpsModalDialog
       {...dialogProps}
       open={isOpen}
       onClose={handleClose}
@@ -878,7 +878,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
         )}
 
         {renderStepContent?.(contextForStep)}
-    </PolyFormModal>
+    </OpsModalDialog>
   );
 };
 
