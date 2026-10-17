@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import SuperDataGrid from "@simplishelf/super-data-grid";
 import type {
+  SuperDataGridColumnOptions,
   SuperDataGridColumnConfiguration,
+  SuperDataGridColumnType,
   SuperDataGridFilterField,
 } from "@simplishelf/super-data-grid";
 
@@ -23,6 +25,12 @@ export interface SheetIngestReferenceGrid {
   rowIdField: string;
   /** Human-readable labels for grid fields. */
   columnLabels: Readonly<Record<string, string>>;
+  /** Optional package-owned cell renderers for standard grid presentation. */
+  columnTypes?: Partial<Record<string, SuperDataGridColumnType>>;
+  /** Options for package-owned cell renderers, keyed by column field. */
+  columnOptions?: Partial<Record<string, SuperDataGridColumnOptions>>;
+  /** Optional width and layout overrides for the reference grid. */
+  columnConfiguration?: Partial<Record<string, SuperDataGridColumnConfiguration>>;
   /** Typed fields used by the grid's filter builder. */
   filterFields: readonly SuperDataGridFilterField[];
   /** Optional empty-state message. */
@@ -55,9 +63,10 @@ const createColumnConfiguration = (
     );
     const minWidth = Math.max(116, Math.min(320, longestValue * 7 + 36));
     return [field, {
+      ...section.columnConfiguration?.[field],
       headerName: section.columnLabels[field] ?? field,
-      minWidth,
-      flex: Math.max(0.7, minWidth / 180),
+      minWidth: section.columnConfiguration?.[field]?.minWidth ?? minWidth,
+      flex: section.columnConfiguration?.[field]?.flex ?? Math.max(0.7, minWidth / 180),
     }];
   }));
 
@@ -107,6 +116,8 @@ export const SheetIngestReferenceData = ({
             <SuperDataGrid
               columns={section.columns}
               columnConfiguration={createColumnConfiguration(section)}
+              columnTypes={section.columnTypes}
+              columnOptions={section.columnOptions}
               data={section.rows}
               filterFields={section.filterFields}
               filterFieldsMode="replace"

@@ -1,6 +1,6 @@
 {
   "name": "@simplishelf/sheet-ingest",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "A configurable React spreadsheet import flow for CSV and Excel files.",
   "license": "MIT",
   "repository": {
