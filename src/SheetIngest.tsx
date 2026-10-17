@@ -65,6 +65,7 @@ import type {
 } from "./types";
 import type { SourceColumn } from "./workbook";
 import { SheetIngestIdPopover } from "./SheetIngestIdPopover";
+import { IMPORT_GRID_DEFAULT_PAGE_SIZE, IMPORT_GRID_PAGE_SIZE_OPTIONS } from "./pagination";
 import styles from "./SheetIngest.module.css";
 
 const selectMenuProps = {
@@ -170,12 +171,6 @@ const ADDRESS_PART_FIELDS = new Set([
   "emailonaddress",
   "phoneonaddress",
 ]);
-
-const getInitialPreviewPageSize = (): number => {
-  if (typeof window === "undefined" || window.innerHeight >= 1180) return 5;
-  if (window.innerHeight >= 880) return 3;
-  return 2;
-};
 
 const getFileExtension = (fileName: string): string =>
   fileName.split(".").pop()?.toLowerCase() ?? "";
@@ -789,7 +784,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   const [processedRows, setProcessedRows] = useState<ProcessedRow<Row>[]>([]);
   const [previewPaginationModel, setPreviewPaginationModel] = useState<GridPaginationModel>(() => ({
     page: 0,
-    pageSize: getInitialPreviewPageSize(),
+    pageSize: IMPORT_GRID_DEFAULT_PAGE_SIZE,
   }));
   const [testDataCount, setTestDataCount] = useState(defaultTestDataCount);
   const [busy, setBusy] = useState(false);
@@ -806,7 +801,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     setHeaderRows([0]);
     setColumnMapping({});
     setProcessedRows([]);
-    setPreviewPaginationModel({ page: 0, pageSize: getInitialPreviewPageSize() });
+    setPreviewPaginationModel({ page: 0, pageSize: IMPORT_GRID_DEFAULT_PAGE_SIZE });
     setBusy(false);
     setError(null);
     setSuccess(null);
@@ -1027,7 +1022,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
         ),
       );
       setProcessedRows(result);
-      setPreviewPaginationModel({ page: 0, pageSize: getInitialPreviewPageSize() });
+      setPreviewPaginationModel({ page: 0, pageSize: IMPORT_GRID_DEFAULT_PAGE_SIZE });
       setStep("preview");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The file could not be prepared for review.");
@@ -1453,7 +1448,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                 minHeight="100%"
                 getRowHeight={() => "auto"}
                 getEstimatedRowHeight={() => 88}
-                pageSizeOptions={[2, 3, 5, 10, 25, 50, 100, 500]}
+                pageSizeOptions={IMPORT_GRID_PAGE_SIZE_OPTIONS}
                 hideToolbar
                 hideViews
                 canAddViews={false}

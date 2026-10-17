@@ -5,6 +5,7 @@ import type {
   SuperDataGridFilterField,
 } from "@simplishelf/super-data-grid";
 
+import { IMPORT_GRID_PAGE_SIZE_OPTIONS } from "./pagination";
 import styles from "./SheetIngestReferenceData.module.css";
 
 export interface SheetIngestReferenceGrid {
@@ -124,7 +125,7 @@ export const SheetIngestReferenceData = ({
               minHeight={440}
               workspacePadding="none"
               getRowHeight={() => "auto"}
-              pageSizeOptions={[5, 10, 25, 50, 100]}
+              pageSizeOptions={IMPORT_GRID_PAGE_SIZE_OPTIONS}
               loading={loading}
               dataGridSlots={{ noRowsOverlay: createEmptyOverlay(section.emptyMessage ?? "No reference data available.") }}
             />
