@@ -21,7 +21,6 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import type { GridColumnGroupingModel } from "@mui/x-data-grid";
 import {
   AutoAwesome as AutoAwesomeIcon,
   Check as CheckIcon,
@@ -145,23 +144,6 @@ const toIssueList = (
   return (Array.isArray(value) ? value : [value]).map(asIssue);
 };
 
-const groupId = (label: string): string =>
-  `sheet-ingest-${normalizeHeader(label) || "group"}`;
-
-const createColumnGroups = (
-  fields: readonly SheetIngestField[],
-  groups: SheetIngestProps["template"]["groups"],
-): GridColumnGroupingModel =>
-  groups
-    .map((group) => ({
-      groupId: groupId(group.label),
-      headerName: group.label,
-      children: group.fields
-        .filter((field) => !field.hideInPreview && fields.some((item) => item.key === field.key))
-        .map((field) => ({ field: field.key })),
-    }))
-    .filter((group) => group.children.length > 0);
-
 const cellText = (value: unknown): string => {
   if (value == null) return "";
   if (typeof value === "string") return value;
@@ -277,7 +259,7 @@ const getCustomColumns = (
   for (const field of visibleFields) {
     columnConfiguration[field.key] = {
       headerName: field.label,
-      width: field.width ?? 160,
+      ...(field.width == null ? {} : { width: field.width }),
       minWidth: Math.min(field.width ?? 160, 110),
     };
     const normalizedNames = [field.key, field.label, field.templateHeader, ...(field.aliases ?? [])]
@@ -406,10 +388,6 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   const grid = useMemo(
     () => getCustomColumns(fields, t.row, t.status),
     [fields, t.row, t.status],
-  );
-  const groupingModel = useMemo(
-    () => createColumnGroups(fields, template.groups),
-    [fields, template.groups],
   );
   const cellComponents = useMemo(
     () => ({ status: ErrorStatusCell<Row> }),
@@ -618,7 +596,6 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
       }}
       actions={(
         <>
-          <Button className={styles.cancelButton} onClick={handleClose} disabled={busy}>{t.cancel}</Button>
           <Stack direction="row" spacing={1}>
             {activeStepIndex > 0 && (
               <Button className={styles.navigationButton} startIcon={<NavigateBeforeIcon />} onClick={goBack} disabled={busy}>
@@ -856,19 +833,20 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
             {issueCount > 0 && (
               <Alert severity="warning">{issueCount.toLocaleString()} validation issue{issueCount === 1 ? "" : "s"} found. Hover over an issue status to review its details.</Alert>
             )}
-            <Box sx={{ width: "100%", height: { xs: 360, md: 460 } }}>
+            <Box className={styles.previewGrid}>
               <SuperDataGrid
                 columns={grid.columns}
                 data={previewRows}
                 columnConfiguration={grid.columnConfiguration}
                 columnOptions={grid.columnOptions}
                 columnTypes={grid.columnTypes}
-                columnGroupingModel={groupingModel}
                 cellComponents={cellComponents}
                 getRowId={(row) => row.rowNumber}
+                height="100%"
                 minHeight="100%"
-                rowHeight={46}
-                pageSizeOptions={[10, 25, 50, 100]}
+                getRowHeight={() => "auto"}
+                getEstimatedRowHeight={() => 72}
+                pageSizeOptions={[10, 25, 50, 100, 500]}
                 hideToolbar
                 hideViews
                 canAddViews={false}
