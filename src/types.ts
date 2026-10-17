@@ -8,6 +8,7 @@ import type {
 export type SheetIngestScalar = string | number | boolean | Date | null | undefined;
 export type SheetIngestRow = object;
 export type SheetIngestMaybePromise<T> = T | Promise<T>;
+export type SheetIngestGeneratedRows = readonly Readonly<Record<string, unknown>>[];
 
 export interface SheetIngestPreviewCellContext<Row extends SheetIngestRow = SheetIngestRow> {
   /** Preview column key, including package-generated composite columns. */
@@ -74,7 +75,7 @@ export interface SheetIngestRowContext {
 }
 
 export interface SheetIngestStepContext {
-  step: "upload" | "header" | "mapping" | "preview";
+  step: "reference" | "upload" | "header" | "mapping" | "preview";
   file: File | null;
   rowCount: number;
 }
@@ -100,8 +101,12 @@ export interface SheetIngestProps<Row extends SheetIngestRow = SheetIngestRow> {
   ) => SheetIngestMaybePromise<void | string | SheetIngestIssue | readonly (string | SheetIngestIssue)[]>;
   /** Optional host renderers for preview cells, keyed by their preview column. */
   previewCellRenderers?: Partial<Record<string, SheetIngestPreviewCellRenderer<Row>>>;
-  /** Generate and download entity-specific realistic data in the host app. */
-  onGenerateTestData?: (recordCount: number) => SheetIngestMaybePromise<void>;
+  /** Adds a read-only host reference-data step before file upload. */
+  referenceDataStep?: boolean;
+  /** Generate realistic rows in the host app; SheetIngest creates their workbook. */
+  onGenerateTestData?: (
+    recordCount: number,
+  ) => SheetIngestMaybePromise<void | SheetIngestGeneratedRows>;
   /** Show the test-data count input and button when a generator is provided. Defaults to true. */
   showTestDataGenerator?: boolean;
   /** Optional custom content rendered below the active step. */
@@ -127,6 +132,7 @@ export interface SheetIngestProps<Row extends SheetIngestRow = SheetIngestRow> {
 export interface SheetIngestTranslations {
   title: string;
   steps: {
+    reference?: string;
     upload: string;
     header: string;
     mapping: string;
@@ -155,6 +161,7 @@ export interface SheetIngestTranslations {
   records: string;
   testRecordCount: string;
   fileHelp: string;
+  referenceHelp?: string;
   headerHelp: string;
   mappingHelp: string;
   previewHelp: string;

@@ -339,24 +339,29 @@ export const createTemplateWorkbook = (
   return workbook;
 };
 
-/** Download a template workbook, optionally prefilled with host-generated rows. */
-export const downloadTemplate = async (
+const XLSX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+/** Build a template workbook as a browser Blob, optionally prefilled with host-generated rows. */
+export const createTemplateBlob = async (
   template: SheetIngestTemplate,
   rows: readonly Readonly<Record<string, unknown>>[] = [],
-): Promise<void> => {
-  if (typeof document === "undefined") {
-    throw new TypeError("Template downloads are only available in a browser.");
-  }
+): Promise<Blob> => {
   const workbook = createTemplateWorkbook(template, rows);
   const buffer = await workbook.xlsx.writeBuffer();
   const bytes = new Uint8Array(buffer.byteLength);
   bytes.set(buffer as unknown as Uint8Array);
-  const url = URL.createObjectURL(new Blob([bytes], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  }));
+  return new Blob([bytes], { type: XLSX_MIME_TYPE });
+};
+
+/** Start a download from a prepared Blob during a direct user interaction. */
+export const downloadBlob = (blob: Blob, fileName: string): void => {
+  if (typeof document === "undefined") {
+    throw new TypeError("Template downloads are only available in a browser.");
+  }
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = template.fileName;
+  link.download = fileName;
   link.style.display = "none";
   document.body.appendChild(link);
   link.click();
@@ -364,4 +369,13 @@ export const downloadTemplate = async (
   // Let the browser start consuming the object URL before revoking it. A zero-delay
   // cleanup can cancel downloads in browsers that begin the transfer asynchronously.
   window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+};
+
+/** Download a template workbook, optionally prefilled with host-generated rows. */
+export const downloadTemplate = async (
+  template: SheetIngestTemplate,
+  rows: readonly Readonly<Record<string, unknown>>[] = [],
+): Promise<void> => {
+  const blob = await createTemplateBlob(template, rows);
+  downloadBlob(blob, template.fileName);
 };

@@ -1,0 +1,138 @@
+import type { ReactNode } from "react";
+import SuperDataGrid from "@simplishelf/super-data-grid";
+import type {
+  SuperDataGridColumnConfiguration,
+  SuperDataGridFilterField,
+} from "@simplishelf/super-data-grid";
+
+import styles from "./SheetIngestReferenceData.module.css";
+
+export interface SheetIngestReferenceGrid {
+  /** Stable key for the section. */
+  id: string;
+  /** Section title shown above its grid. */
+  title: string;
+  /** Short guidance shown below the title. */
+  description: string;
+  /** Grid rows supplied by the host application. */
+  rows: readonly object[];
+  /** Row fields, ordered from left to right. */
+  columns: readonly string[];
+  /** The row field that uniquely identifies each record. */
+  rowIdField: string;
+  /** Human-readable labels for grid fields. */
+  columnLabels: Readonly<Record<string, string>>;
+  /** Typed fields used by the grid's filter builder. */
+  filterFields: readonly SuperDataGridFilterField[];
+  /** Optional empty-state message. */
+  emptyMessage?: string;
+}
+
+export interface SheetIngestReferenceDataProps {
+  /** Heading shown above the reference sections. */
+  title: string;
+  /** Instructions explaining how the reference data should be used. */
+  description: string;
+  /** Read-only grid sections. */
+  sections: readonly SheetIngestReferenceGrid[];
+  /** Show loading overlays while reference data is being fetched. */
+  loading?: boolean;
+  /** Optional error text. */
+  error?: ReactNode;
+  /** Optional retry/refresh action. */
+  onRefresh?: () => void;
+}
+
+const createColumnConfiguration = (
+  section: SheetIngestReferenceGrid,
+): Partial<Record<string, SuperDataGridColumnConfiguration>> =>
+  Object.fromEntries(section.columns.map((field) => {
+    const values = section.rows.map((row) => String(Reflect.get(row, field) ?? ""));
+    const longestValue = Math.max(
+      section.columnLabels[field]?.length ?? field.length,
+      ...values.map((value) => value.length),
+    );
+    const minWidth = Math.max(116, Math.min(320, longestValue * 7 + 36));
+    return [field, {
+      headerName: section.columnLabels[field] ?? field,
+      minWidth,
+      flex: Math.max(0.7, minWidth / 180),
+    }];
+  }));
+
+const createEmptyOverlay = (message: string) => function ReferenceGridEmptyOverlay(): React.JSX.Element {
+  return <div className={styles.emptyGrid}>{message}</div>;
+};
+
+export const SheetIngestReferenceData = ({
+  title,
+  description,
+  sections,
+  loading = false,
+  error,
+  onRefresh,
+}: SheetIngestReferenceDataProps): React.JSX.Element => (
+  <section className={styles.referenceStep} aria-label={title}>
+    <header className={styles.referenceHeader}>
+      <div>
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+      {onRefresh && (
+        <button className={styles.refreshButton} type="button" onClick={onRefresh} disabled={loading}>
+          {loading ? "Loading…" : "Refresh lists"}
+        </button>
+      )}
+    </header>
+
+    {error && (
+      <div className={styles.errorNotice} role="alert">
+        <span>{error}</span>
+        {onRefresh && <button type="button" onClick={onRefresh} disabled={loading}>Retry</button>}
+      </div>
+    )}
+
+    <div className={styles.referenceSections}>
+      {sections.map((section, index) => (
+        <article className={styles.referenceCard} key={section.id}>
+          <div className={styles.cardHeading}>
+            <span className={styles.cardNumber}>{String(index + 1).padStart(2, "0")}</span>
+            <div>
+              <h3>{section.title}</h3>
+              <p>{section.description}</p>
+            </div>
+          </div>
+          <div className={styles.referenceGridInstance} aria-label={section.title} role="region">
+            <SuperDataGrid
+              columns={section.columns}
+              columnConfiguration={createColumnConfiguration(section)}
+              data={section.rows}
+              filterFields={section.filterFields}
+              filterFieldsMode="replace"
+              filterMode="client"
+              paginationMode="client"
+              sortingMode="client"
+              checkboxSelection={false}
+              isRowSelectable={() => false}
+              hideBulkDelete
+              hideViews
+              canAddViews={false}
+              canEditViews={false}
+              canDeleteViews={false}
+              getRowId={(row) => String(Reflect.get(row, section.rowIdField) ?? "")}
+              height={460}
+              minHeight={440}
+              workspacePadding="none"
+              getRowHeight={() => "auto"}
+              pageSizeOptions={[5, 10, 25, 50, 100]}
+              loading={loading}
+              dataGridSlots={{ noRowsOverlay: createEmptyOverlay(section.emptyMessage ?? "No reference data available.") }}
+            />
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+);
+
+export default SheetIngestReferenceData;

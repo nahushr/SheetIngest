@@ -1,9 +1,18 @@
 import "./style.css";
 
 export { default, SheetIngest } from "./SheetIngest";
+export { default as SheetIngestReferenceData } from "./SheetIngestReferenceData";
+export { default as SheetIngestIdPopover } from "./SheetIngestIdPopover";
+export type { SheetIngestIdPopoverProps } from "./SheetIngestIdPopover";
+export type {
+  SheetIngestReferenceDataProps,
+  SheetIngestReferenceGrid,
+} from "./SheetIngestReferenceData";
 export {
+  createTemplateBlob,
   createTemplateWorkbook,
   detectHeaderRow,
+  downloadBlob,
   downloadTemplate,
   getSourceColumns,
   getTemplateFields,
@@ -14,6 +23,7 @@ export {
 export type {
   SheetIngestField,
   SheetIngestGroup,
+  SheetIngestGeneratedRows,
   SheetIngestIssue,
   SheetIngestMaybePromise,
   SheetIngestPreviewCellContext,

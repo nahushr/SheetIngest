@@ -1,0 +1,176 @@
+.referenceStep {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 24px 24px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: var(--ops-font-sans, Inter, ui-sans-serif, system-ui, sans-serif);
+}
+
+.referenceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 2px 0;
+}
+
+.referenceHeader h2 {
+  margin: 0;
+  color: #083344;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.referenceHeader p {
+  max-width: 900px;
+  margin: 5px 0 0;
+  color: #475569;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.refreshButton,
+.errorNotice button {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border: 1px solid #a5f3fc;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0e7490;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.refreshButton:hover,
+.errorNotice button:hover {
+  border-color: #0891b2;
+  background: #ecfeff;
+}
+
+.refreshButton:disabled,
+.errorNotice button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.errorNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.875rem;
+}
+
+.referenceSections {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.referenceCard {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+}
+
+.cardHeading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.cardNumber {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #a5f3fc;
+  border-radius: 11px;
+  background: #ecfeff;
+  color: #0e7490;
+  font-family: var(--ops-font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.cardHeading h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.cardHeading p {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.referenceGridInstance {
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+  border-radius: 10px;
+  font-family: var(--ops-font-sans, Inter, ui-sans-serif, system-ui, sans-serif);
+}
+
+.referenceGridInstance > :global(.gridWorkspace) {
+  min-height: 440px;
+}
+
+.emptyGrid {
+  display: grid;
+  min-height: 140px;
+  place-items: center;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 600px) {
+  .referenceStep {
+    padding: 14px 16px 18px;
+  }
+
+  .referenceHeader {
+    flex-direction: column;
+  }
+
+  .refreshButton {
+    align-self: flex-start;
+  }
+
+  .referenceCard {
+    padding: 14px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .referenceSections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+}

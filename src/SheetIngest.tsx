@@ -27,6 +27,7 @@ import {
   AutoAwesome as AutoAwesomeIcon,
   Check as CheckIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
+  CalendarMonth as CalendarMonthIcon,
   CloudUpload as CloudUploadIcon,
   Download as DownloadIcon,
   ErrorOutline as ErrorOutlineIcon,
@@ -34,7 +35,7 @@ import {
   NavigateBefore as NavigateBeforeIcon,
   NavigateNext as NavigateNextIcon,
 } from "@mui/icons-material";
-import SuperDataGrid, { DateCell, GridChip, UserContactCell } from "@simplishelf/super-data-grid";
+import SuperDataGrid, { DateCell, UserContactCell } from "@simplishelf/super-data-grid";
 import type {
   SuperDataGridCellComponent,
   SuperDataGridCellProps,
@@ -44,6 +45,8 @@ import type {
 } from "@simplishelf/super-data-grid";
 import {
   detectHeaderRow,
+  createTemplateBlob,
+  downloadBlob,
   downloadTemplate,
   getSourceColumns,
   getTemplateFields,
@@ -54,13 +57,14 @@ import {
 import type {
   SheetIngestField,
   SheetIngestIssue,
-  SheetIngestPreviewCellRenderer,
   SheetIngestProps,
   SheetIngestRow,
   SheetIngestRowContext,
   SheetIngestStepContext,
   SheetIngestTranslations,
 } from "./types";
+import type { SourceColumn } from "./workbook";
+import { SheetIngestIdPopover } from "./SheetIngestIdPopover";
 import styles from "./SheetIngest.module.css";
 
 const selectMenuProps = {
@@ -72,6 +76,7 @@ const selectMenuProps = {
 const DEFAULT_TRANSLATIONS: SheetIngestTranslations = {
   title: "Import data",
   steps: {
+    reference: "Reference data",
     upload: "Upload file",
     header: "Select header rows",
     mapping: "Match columns",
@@ -103,11 +108,13 @@ const DEFAULT_TRANSLATIONS: SheetIngestTranslations = {
   headerHelp: "We preselected the best matching row and its parent row when available. Select every row that belongs to your nested headers.",
   mappingHelp: "Match each template field to the column that contains its data.",
   previewHelp: "Review validation results before importing. Rows with errors are blocked by default.",
+  referenceHelp: "Use these current values and IDs when preparing the spreadsheet. This reference data is read-only; filtering, columns, density, and export are available.",
 };
 
-type WizardStep = "upload" | "mapping" | "preview";
+type WizardStep = "reference" | "upload" | "mapping" | "preview";
 
-const STEP_HELP_KEYS: Record<WizardStep, keyof Pick<SheetIngestTranslations, "fileHelp" | "mappingHelp" | "previewHelp">> = {
+const STEP_HELP_KEYS: Record<WizardStep, keyof Pick<SheetIngestTranslations, "referenceHelp" | "fileHelp" | "mappingHelp" | "previewHelp">> = {
+  reference: "referenceHelp",
   upload: "fileHelp",
   mapping: "mappingHelp",
   preview: "previewHelp",
@@ -117,6 +124,7 @@ interface ProcessedRow<Row extends SheetIngestRow> {
   rowNumber: number;
   data: Row;
   errors: SheetIngestIssue[];
+  sourceValues: Array<{ header: string; value: string }>;
 }
 
 type GridRow<Row extends SheetIngestRow> = Row & {
@@ -124,15 +132,17 @@ type GridRow<Row extends SheetIngestRow> = Row & {
   status: string;
   __sheetIngestErrors: SheetIngestIssue[];
   __sheetIngestData: Row;
+  __sheetIngestSourceValues: Array<{ header: string; value: string }>;
 };
 
-const STEPS: WizardStep[] = ["upload", "mapping", "preview"];
+const UPLOAD_STEPS: WizardStep[] = ["upload", "mapping", "preview"];
 const ACCEPTED_EXTENSIONS = new Set(["csv", "xlsx"]);
 const DEFAULT_MAX_RECORDS = 1000;
 const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024;
 const DEFAULT_MAX_TEST_DATA_COUNT = 10_000;
 const PREVIEW_USER_DETAILS_FIELD = "__sheetIngestPreviewUserDetails";
 const PREVIEW_ADDRESSES_FIELD = "__sheetIngestPreviewAddresses";
+const PREVIEW_RAW_DATA_FIELD = "__sheetIngestPreviewRawData";
 
 const USER_DETAIL_FIELDS = new Set([
   "firstname",
@@ -202,6 +212,7 @@ interface ProcessRecordOptions<Row extends SheetIngestRow> {
   columnMapping: Readonly<Record<string, number | null>>;
   matrix: string[][];
   headerRow: number;
+  sourceColumns: readonly SourceColumn[];
   file: File;
   sheetName: string;
   mapRow: SheetIngestProps<Row>["mapRow"];
@@ -215,6 +226,7 @@ const processRecord = async <Row extends SheetIngestRow>({
   columnMapping,
   matrix,
   headerRow,
+  sourceColumns,
   file,
   sheetName,
   mapRow,
@@ -252,7 +264,15 @@ const processRecord = async <Row extends SheetIngestRow>({
     });
   }
 
-  return { rowNumber: context.rowNumber, data, errors };
+  const sourceValues = sourceColumns.flatMap((column) => {
+    const value = sourceRow[column.index] ?? "";
+    if (value.trim() === "") return [];
+    const baseHeader = column.header || `Column ${column.index + 1}`;
+    const header = column.group ? `${column.group} · ${baseHeader}` : baseHeader;
+    return [{ header, value }];
+  });
+
+  return { rowNumber: context.rowNumber, data, errors, sourceValues };
 };
 
 const ErrorStatusCell = <Row extends SheetIngestRow>({
@@ -286,8 +306,14 @@ interface PreviewAddressFieldGroup {
 interface PreviewAddressValue {
   label: string;
   addressType: string;
+  summary: string;
   lines: string[];
   contact?: string;
+}
+
+interface PreviewSourceValue {
+  header: string;
+  value: string;
 }
 
 const getAddressFieldGroup = (
@@ -376,7 +402,8 @@ const isPreviewAddressValue = (value: unknown): value is PreviewAddressValue => 
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
   const record = value as Record<string, unknown>;
   return typeof record.label === "string" && typeof record.addressType === "string" &&
-    Array.isArray(record.lines) && record.lines.every((line) => typeof line === "string");
+    typeof record.summary === "string" && Array.isArray(record.lines) &&
+    record.lines.every((line) => typeof line === "string");
 };
 
 const PreviewUserDetailsCell = <Row extends SheetIngestRow>({
@@ -392,6 +419,7 @@ const PreviewUserDetailsCell = <Row extends SheetIngestRow>({
   const phone = cellText(details.phone).trim();
   const photoUrl = getSafeHttpUrl(cellText(details.imageUrl || details.profilePicture).trim());
   const initials = [firstName[0], lastName[0]].filter(Boolean).join("").toUpperCase() || name.slice(0, 1).toUpperCase();
+  const addresses = Array.isArray(details.addresses) ? details.addresses.filter(isPreviewAddressValue) : [];
   const avatar = (
     <Avatar className={styles.previewUserAvatar} src={photoUrl ?? undefined} alt={name || "User profile"}>
       {initials || "?"}
@@ -400,27 +428,54 @@ const PreviewUserDetailsCell = <Row extends SheetIngestRow>({
 
   return (
     <div className={styles.previewUserDetails}>
-      {photoUrl ? (
-        <a
-          aria-label={`Open profile image for ${name || email || "user"}`}
-          className={styles.previewAvatarLink}
-          href={photoUrl}
-          rel="noreferrer"
-          target="_blank"
-          title="Open profile image"
-        >
-          {avatar}
-        </a>
-      ) : avatar}
-      <UserContactCell
-        email={email}
-        firstName={firstName}
-        lastName={lastName}
-        name={name}
-        phone={phone}
-        showNameIcon={false}
-        wrap
-      />
+      <div className={styles.previewUserMain}>
+        {photoUrl ? (
+          <a
+            aria-label={`Open profile image for ${name || email || "user"}`}
+            className={styles.previewAvatarLink}
+            href={photoUrl}
+            rel="noreferrer"
+            target="_blank"
+            title="Open profile image"
+          >
+            {avatar}
+          </a>
+        ) : avatar}
+        <UserContactCell
+          email={email}
+          firstName={firstName}
+          lastName={lastName}
+          name={name}
+          phone={phone}
+          showNameIcon={false}
+          wrap
+        />
+      </div>
+      {addresses.length > 0 && (
+        <div className={styles.previewUserAddresses}>
+          <span className={styles.previewAddressSectionLabel}>Addresses · {addresses.length}</span>
+          <div className={styles.previewAddressChips}>
+            {addresses.map((address) => (
+              <details className={styles.previewAddressDisclosure} key={address.label}>
+                <summary className={styles.previewAddressChip} title={`${address.addressType || "Address"}: ${address.summary}`}>
+                  <span className={styles.previewAddressChipType}>{address.addressType || address.label}</span>
+                  <span className={styles.previewAddressSummary}>{address.summary}</span>
+                </summary>
+                <div className={styles.previewAddressPopover}>
+                  <div className={styles.previewAddressPopoverHeading}>
+                    <strong>{address.label}</strong>
+                    {address.addressType && <span className={styles.previewAddressType}>{address.addressType}</span>}
+                  </div>
+                  {address.lines.map((line, index) => (
+                    <span className={styles.previewAddressLine} key={`${address.label}-${index}`}>{line}</span>
+                  ))}
+                  {address.contact && <span className={styles.previewAddressContact}>{address.contact}</span>}
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -456,15 +511,38 @@ const PreviewListCountCell = <Row extends SheetIngestRow>({
   const items = getListItems(value);
   if (items.length === 0) return <span className={styles.previewEmptyValue}>—</span>;
   const label = getListFieldLabel({ key: field, label: field });
-  const title = items.join(", ");
+  const chipLabel = `${label.charAt(0).toUpperCase()}${label.slice(1)}${label.endsWith("s") ? "" : "s"}`;
 
   return (
-    <GridChip
-      aria-label={`${items.length} ${label}${items.length === 1 ? "" : "s"}`}
-      label={`${items.length} ${label}${items.length === 1 ? "" : "s"}`}
-      title={title}
-      tone="cyan"
-    />
+    <div className={styles.previewIdList}>
+      <SheetIngestIdPopover label={chipLabel} values={items} />
+    </div>
+  );
+};
+
+const PreviewRawDataCell = <Row extends SheetIngestRow>({
+  value,
+}: SuperDataGridCellProps<GridRow<Row>>): React.JSX.Element => {
+  const values = Array.isArray(value)
+    ? value.filter((item): item is PreviewSourceValue =>
+      typeof item === "object" && item !== null &&
+      typeof (item as PreviewSourceValue).header === "string" &&
+      typeof (item as PreviewSourceValue).value === "string")
+    : [];
+  if (values.length === 0) return <span className={styles.previewEmptyValue}>No entered source values</span>;
+
+  return (
+    <details className={styles.previewRawDataDisclosure}>
+      <summary>All spreadsheet values ({values.length})</summary>
+      <dl className={styles.previewRawDataList}>
+        {values.map((item, index) => (
+          <div className={styles.previewRawDataItem} key={`${item.header}-${index}`}>
+            <dt>{item.header}</dt>
+            <dd>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   );
 };
 
@@ -486,12 +564,12 @@ const PreviewUrlCell = <Row extends SheetIngestRow>({
 const PreviewDateCell = <Row extends SheetIngestRow>({
   value,
 }: SuperDataGridCellProps<GridRow<Row>>): React.JSX.Element => (
-  <DateCell
-    emptyText="—"
-    formatString="do MMM yyyy"
-    options={{ showIcon: false, timeZone: "UTC" }}
-    value={value}
-  />
+  value == null || value === "" ? <span className={styles.previewEmptyValue}>—</span> : (
+    <span className={styles.previewDate}>
+      <CalendarMonthIcon aria-hidden="true" />
+      <DateCell emptyText="—" formatString="do MMM yyyy" options={{ showIcon: false, timeZone: "UTC" }} value={value} />
+    </span>
+  )
 );
 
 const getCustomColumns = (
@@ -539,6 +617,7 @@ const getCustomColumns = (
   const listFieldKeys = new Set(listFields.map((field) => field.key));
   const userDetailsFieldKeys = new Set(userDetailsFields.map((field) => field.key));
   const addressFieldKeys = new Set(addressGroups.flatMap((group) => group.fields.map((field) => field.key)));
+  const addressInUserDetails = hasUserDetails && addressGroups.length > 0;
   const columnConfiguration: Partial<Record<string, SuperDataGridColumnConfiguration>> = {
     rowNumber: { headerName: rowNumberLabel, width: 52, minWidth: 52, maxWidth: 58 },
     status: { headerName: statusLabel, minWidth: 100, flex: 0.75 },
@@ -551,12 +630,12 @@ const getCustomColumns = (
   if (hasUserDetails) {
     columnConfiguration[PREVIEW_USER_DETAILS_FIELD] = {
       headerName: "User Details",
-      minWidth: 260,
-      flex: 2.2,
+      minWidth: 340,
+      flex: 2.6,
     };
     columnTypes[PREVIEW_USER_DETAILS_FIELD] = "peopleDetails";
   }
-  if (addressGroups.length > 0) {
+  if (addressGroups.length > 0 && !addressInUserDetails) {
     columnConfiguration[PREVIEW_ADDRESSES_FIELD] = {
       headerName: addressGroups.length > 1 ? "Addresses" : "Address",
       minWidth: 190,
@@ -577,6 +656,7 @@ const getCustomColumns = (
     }
 
     if (addressFieldKeys.has(field.key)) {
+      if (addressInUserDetails) continue;
       if (!addedAddresses) {
         columns.push(PREVIEW_ADDRESSES_FIELD);
         addedAddresses = true;
@@ -645,6 +725,12 @@ const getCustomColumns = (
     }
     if (urlField) urlFields.push(field.key);
   }
+  columnConfiguration[PREVIEW_RAW_DATA_FIELD] = {
+    headerName: "All spreadsheet data",
+    minWidth: 220,
+    flex: 1.4,
+  };
+  columns.push(PREVIEW_RAW_DATA_FIELD);
   columns.push("status");
 
   return {
@@ -669,6 +755,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   mapRow,
   validateRow,
   previewCellRenderers,
+  referenceDataStep = false,
   onGenerateTestData,
   showTestDataGenerator = true,
   renderStepContent,
@@ -686,8 +773,12 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     [translations],
   );
   const fields = useMemo(() => getTemplateFields(template), [template]);
+  const steps = useMemo<WizardStep[]>(
+    () => referenceDataStep ? ["reference", ...UPLOAD_STEPS] : UPLOAD_STEPS,
+    [referenceDataStep],
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [step, setStep] = useState<WizardStep>("upload");
+  const [step, setStep] = useState<WizardStep>(referenceDataStep ? "reference" : "upload");
   const stepHelp = t[STEP_HELP_KEYS[step]];
   const [file, setFile] = useState<File | null>(null);
   const [sheetName, setSheetName] = useState("");
@@ -704,9 +795,10 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [generatedTestFile, setGeneratedTestFile] = useState<File | null>(null);
 
   const reset = useCallback((): void => {
-    setStep("upload");
+    setStep(referenceDataStep ? "reference" : "upload");
     setFile(null);
     setSheetName("");
     setMatrix([]);
@@ -718,7 +810,8 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     setBusy(false);
     setError(null);
     setSuccess(null);
-  }, []);
+    setGeneratedTestFile(null);
+  }, [referenceDataStep]);
 
   useEffect(() => {
     if (isOpen) reset();
@@ -745,6 +838,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
       status: item.errors.length === 0 ? t.valid : t.invalid,
       __sheetIngestErrors: item.errors,
       __sheetIngestData: item.data,
+      __sheetIngestSourceValues: item.sourceValues,
     })),
     [processedRows, t.invalid, t.valid],
   );
@@ -771,6 +865,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     for (const field of grid.listFields) {
       components[field.key] = PreviewListCountCell<Row>;
     }
+    components[PREVIEW_RAW_DATA_FIELD] = PreviewRawDataCell<Row>;
     for (const field of Object.keys(previewCellRenderers ?? {})) {
       const renderer = previewCellRenderers?.[field];
       if (!renderer) continue;
@@ -842,7 +937,10 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
 
   const handleFileInput = useCallback((event: React.ChangeEvent<HTMLInputElement>): void => {
     const selectedFile = event.currentTarget.files?.[0];
-    if (selectedFile) void handleFile(selectedFile);
+    if (selectedFile) {
+      setGeneratedTestFile(null);
+      void handleFile(selectedFile);
+    }
     event.currentTarget.value = "";
   }, [handleFile]);
 
@@ -864,15 +962,34 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     setBusy(true);
     setError(null);
     setSuccess(null);
+    setGeneratedTestFile(null);
     try {
-      await onGenerateTestData(testDataCount);
-      setSuccess(`Generated ${testDataCount.toLocaleString()} test ${t.records}.`);
+      const rows = await onGenerateTestData(testDataCount);
+      if (rows) {
+        if (rows.length === 0) throw new Error("The test-data generator returned no records.");
+        const blob = await createTemplateBlob(template, rows);
+        const preparedFile = new File([blob], template.fileName, { type: blob.type });
+        setGeneratedTestFile(preparedFile);
+        setSuccess(`${rows.length.toLocaleString()} test ${t.records} are ready. Download and preview them to continue.`);
+      } else {
+        setSuccess(`Generated ${testDataCount.toLocaleString()} test ${t.records}.`);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Test data could not be generated.");
     } finally {
       setBusy(false);
     }
-  }, [maxTestDataCount, onGenerateTestData, t.records, testDataCount]);
+  }, [maxTestDataCount, onGenerateTestData, t.records, template, testDataCount]);
+
+  const handleDownloadAndPreviewGeneratedFile = useCallback((): void => {
+    if (!generatedTestFile) return;
+    try {
+      downloadBlob(generatedTestFile, generatedTestFile.name);
+      void handleFile(generatedTestFile);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The generated test-data file could not be downloaded.");
+    }
+  }, [generatedTestFile, handleFile]);
 
   const handleMappingChange = useCallback((fieldKey: string, sourceIndex: number | null): void => {
     setColumnMapping((current) => ({ ...current, [fieldKey]: sourceIndex }));
@@ -901,6 +1018,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
             columnMapping,
             matrix,
             headerRow,
+            sourceColumns: columns,
             file,
             sheetName,
             mapRow,
@@ -916,7 +1034,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     } finally {
       setBusy(false);
     }
-  }, [columnMapping, fields, file, headerRow, mapRow, maxRecords, matrix, records, sheetName, validateRow]);
+  }, [columnMapping, columns, fields, file, headerRow, mapRow, maxRecords, matrix, records, sheetName, validateRow]);
 
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!file || processedRows.length === 0) return;
@@ -939,14 +1057,15 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   const goBack = useCallback((): void => {
     setError(null);
     setStep((current) => {
-      const currentIndex = STEPS.indexOf(current);
-      return STEPS[Math.max(currentIndex - 1, 0)];
+      const currentIndex = steps.indexOf(current);
+      return steps[Math.max(currentIndex - 1, 0)] ?? (referenceDataStep ? "reference" : "upload");
     });
-  }, []);
+  }, [referenceDataStep, steps]);
 
   const goNext = useCallback((): void => {
     setError(null);
-    if (step === "mapping") void handleBuildPreview();
+    if (step === "reference") setStep("upload");
+    else if (step === "mapping") void handleBuildPreview();
   }, [handleBuildPreview, step]);
 
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>): void => {
@@ -955,8 +1074,13 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     if (droppedFile) void handleFile(droppedFile);
   }, [handleFile]);
 
-  const activeStepIndex = STEPS.indexOf(step);
-  const stepLabels: Record<WizardStep, string> = t.steps;
+  const activeStepIndex = steps.indexOf(step);
+  const stepLabels: Record<WizardStep, string> = {
+    reference: t.steps.reference ?? "Reference data",
+    upload: t.steps.upload,
+    mapping: t.steps.mapping,
+    preview: t.steps.preview,
+  };
   const mappingComplete = fields.every((field) => {
     const mapping = columnMapping[field.key];
     return !field.required || (mapping != null && mapping >= 0);
@@ -968,7 +1092,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
       const formattedFields = Object.fromEntries(
         fields.map((field) => [field.key, cellText(Reflect.get(rowData, field.key))]),
       );
-      const userDetails = Object.fromEntries(
+      const userDetails: Record<string, unknown> = Object.fromEntries(
         grid.userDetailsFields.map((field) => [field.key, cellText(Reflect.get(rowData, field.key))]),
       );
       const userDetailValue = (...names: string[]): string => {
@@ -1007,6 +1131,11 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
           values.get("country"),
         ].filter(Boolean).join(", ");
         const addressLine = [street, locality].filter(Boolean).join(", ");
+        const summary = [
+          values.get("city"),
+          values.get("state"),
+          values.get("zipcode") || values.get("postalcode"),
+        ].filter(Boolean).join(", ") || street || "Open address details";
         const contact = [
           values.get("nameonaddress") && !isSameContact(values.get("nameonaddress") ?? "", userName)
             ? `Name: ${values.get("nameonaddress")}`
@@ -1023,6 +1152,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
         return [{
           label: group.number === 1 ? "Primary" : `Address ${group.number}`,
           addressType: values.get("addresstype") ?? "",
+          summary,
           lines,
           contact,
         }];
@@ -1031,8 +1161,9 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
       return {
         ...row,
         ...formattedFields,
-        ...(grid.hasUserDetails ? { [PREVIEW_USER_DETAILS_FIELD]: userDetails } : {}),
+        ...(grid.hasUserDetails ? { [PREVIEW_USER_DETAILS_FIELD]: { ...userDetails, addresses } } : {}),
         ...(grid.addressGroups.length > 0 ? { [PREVIEW_ADDRESSES_FIELD]: addresses } : {}),
+        [PREVIEW_RAW_DATA_FIELD]: row.__sheetIngestSourceValues,
       };
     }),
     [fields, grid, gridRows],
@@ -1061,9 +1192,9 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                 {t.back}
               </Button>
             )}
-            {step === "mapping" && (
-              <Button className={styles.primaryButton} variant="contained" endIcon={<NavigateNextIcon />} onClick={goNext} disabled={busy || records.length === 0}>
-                {busy ? "Preparing…" : t.next}
+            {(step === "reference" || step === "mapping") && (
+              <Button className={styles.primaryButton} variant="contained" endIcon={<NavigateNextIcon />} onClick={goNext} disabled={busy || (step === "mapping" && records.length === 0)}>
+                {busy ? "Preparing…" : step === "reference" ? "Continue to upload" : t.next}
               </Button>
             )}
             {step === "preview" && (
@@ -1077,7 +1208,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     >
       <Box className={styles.stepperBar}>
         <Stepper className={styles.stepper} activeStep={activeStepIndex}>
-          {STEPS.map((item) => (
+          {steps.map((item) => (
             <Step className={styles.step} key={item}>
               <StepLabel className={styles.stepLabel}>{stepLabels[item]}</StepLabel>
             </Step>
@@ -1155,7 +1286,10 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                       type="number"
                       className={styles.recordCountField}
                       value={testDataCount}
-                      onChange={(event) => setTestDataCount(Number(event.target.value))}
+                      onChange={(event) => {
+                        setGeneratedTestFile(null);
+                        setTestDataCount(Number(event.target.value));
+                      }}
                       inputProps={{
                         min: 1,
                         max: maxTestDataCount,
@@ -1173,6 +1307,17 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                   >
                     {t.generateTestData}
                   </Button>
+                  {generatedTestFile && (
+                    <Button
+                      className={styles.generatedDataButton}
+                      variant="contained"
+                      startIcon={<DownloadIcon />}
+                      onClick={handleDownloadAndPreviewGeneratedFile}
+                      disabled={busy}
+                    >
+                      Download &amp; preview {testDataCount} records
+                    </Button>
+                  )}
                 </>
               )}
             </Stack>

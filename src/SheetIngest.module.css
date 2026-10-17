@@ -84,7 +84,16 @@
 }
 
 .previewDialog {
+  width: 90vw !important;
+  max-width: 90vw !important;
   max-height: min(94dvh, 64rem) !important;
+}
+
+@media (max-width: 600px) {
+  .previewDialog {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
 }
 
 .progress {
@@ -220,6 +229,23 @@
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
 }
 
+.generatedDataButton {
+  min-height: 36px;
+  padding: 7px 14px !important;
+  border: 1px solid #0891b2 !important;
+  border-radius: 8px !important;
+  background: #0e7490 !important;
+  color: #ffffff !important;
+  font-size: 0.8125rem !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.1);
+}
+
+.generatedDataButton:hover {
+  background: #155e75 !important;
+}
+
 .generateButton:hover {
   background: #cffafe !important;
 }
@@ -323,10 +349,34 @@
 
 .previewUserDetails {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.previewUserMain {
+  display: flex;
   align-items: flex-start;
   gap: 10px;
   width: 100%;
   min-width: 0;
+}
+
+.previewDate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.previewDate > svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: #64748b;
 }
 
 .previewAvatarLink {
@@ -356,6 +406,97 @@
   gap: 2px;
   width: 100%;
   min-width: 0;
+}
+
+.previewUserAddresses {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+}
+
+.previewAddressSectionLabel {
+  color: #64748b;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.previewAddressChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 5px;
+  width: 100%;
+}
+
+.previewAddressDisclosure {
+  position: relative;
+  min-width: 0;
+}
+
+.previewAddressChip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid #a5f3fc;
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #0e7490;
+  cursor: pointer;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  list-style: none;
+  white-space: normal;
+}
+
+.previewAddressChip::-webkit-details-marker {
+  display: none;
+}
+
+.previewAddressDisclosure[open] > .previewAddressChip {
+  border-color: #0891b2;
+  background: #cffafe;
+}
+
+.previewAddressChipType {
+  flex: 0 0 auto;
+}
+
+.previewAddressSummary {
+  color: #475569;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.previewAddressPopover {
+  display: flex;
+  position: relative;
+  z-index: 2;
+  flex-direction: column;
+  gap: 3px;
+  width: min(320px, 70vw);
+  margin-top: 5px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgb(15 23 42 / 0.14);
+}
+
+.previewAddressPopoverHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+  color: #0f172a;
+  font-size: 0.75rem;
 }
 
 .previewAddress {
@@ -420,6 +561,68 @@
   font-size: 0.75rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.previewIdList {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.previewRawDataDisclosure {
+  width: 100%;
+  color: #0e7490;
+  font-size: 0.75rem;
+}
+
+.previewRawDataDisclosure > summary {
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid #a5f3fc;
+  border-radius: 7px;
+  background: #ecfeff;
+  cursor: pointer;
+  font-weight: 700;
+  list-style-position: inside;
+}
+
+.previewRawDataList {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 6px 0 0;
+  padding: 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.previewRawDataItem {
+  display: grid;
+  grid-template-columns: minmax(80px, 0.7fr) minmax(0, 1.3fr);
+  gap: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.previewRawDataItem:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.previewRawDataItem dt {
+  color: #64748b;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.previewRawDataItem dd {
+  margin: 0;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .previewUrlLink {
