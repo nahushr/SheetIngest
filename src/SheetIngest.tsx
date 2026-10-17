@@ -841,12 +841,12 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                 columnOptions={grid.columnOptions}
                 columnTypes={grid.columnTypes}
                 cellComponents={cellComponents}
+                gridClassName={styles.previewGridRoot}
                 getRowId={(row) => row.rowNumber}
                 height="100%"
                 minHeight="100%"
-                getRowHeight={() => "auto"}
-                getEstimatedRowHeight={() => 72}
-                pageSizeOptions={[10, 25, 50, 100, 500]}
+                rowHeight={52}
+                pageSizeOptions={[5, 10, 25, 50, 100, 500]}
                 hideToolbar
                 hideViews
                 canAddViews={false}

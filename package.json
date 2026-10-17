@@ -1,6 +1,6 @@
 {
   "name": "@simplishelf/sheet-ingest",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "A configurable React spreadsheet import flow for CSV and Excel files.",
   "license": "MIT",
   "repository": {
@@ -78,7 +78,7 @@
     "@mui/material": "^5.15.0",
     "@mui/x-data-grid": "^8.17.0",
     "@simplishelf/opscards": "file:../opscards",
-    "@simplishelf/super-data-grid": "^0.3.6",
+    "@simplishelf/super-data-grid": "file:../SuperDataGrid",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^22.19.15",

@@ -286,6 +286,25 @@
   border-radius: 14px;
 }
 
+.previewGridRoot :global(.MuiDataGrid-cell) {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.previewGridRoot :global(.MuiDataGrid-cell *),
+.previewGridRoot :global(.MuiDataGrid-cellContent) {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.previewGridRoot :global(.MuiDataGrid-cell svg),
+.previewGridRoot :global(.MuiDataGrid-cell img) {
+  flex: 0 0 auto;
+  overflow: visible !important;
+}
+
 .groupCard {
   overflow: hidden;
   border-color: #e2e8f0 !important;
