@@ -9,6 +9,19 @@ export type SheetIngestScalar = string | number | boolean | Date | null | undefi
 export type SheetIngestRow = object;
 export type SheetIngestMaybePromise<T> = T | Promise<T>;
 
+export interface SheetIngestPreviewCellContext<Row extends SheetIngestRow = SheetIngestRow> {
+  /** Preview column key, including package-generated composite columns. */
+  field: string;
+  /** Formatted cell value supplied by SheetIngest. */
+  value: unknown;
+  /** Mapped row that will be passed to the host import callback. */
+  row: Readonly<Row>;
+}
+
+export type SheetIngestPreviewCellRenderer<Row extends SheetIngestRow = SheetIngestRow> = (
+  context: SheetIngestPreviewCellContext<Row>,
+) => ReactNode;
+
 export interface SheetIngestField {
   /** Stable key returned to the host application. */
   key: string;
@@ -85,6 +98,8 @@ export interface SheetIngestProps<Row extends SheetIngestRow = SheetIngestRow> {
     row: Row,
     context: SheetIngestRowContext,
   ) => SheetIngestMaybePromise<void | string | SheetIngestIssue | readonly (string | SheetIngestIssue)[]>;
+  /** Optional host renderers for preview cells, keyed by their preview column. */
+  previewCellRenderers?: Partial<Record<string, SheetIngestPreviewCellRenderer<Row>>>;
   /** Generate and download entity-specific realistic data in the host app. */
   onGenerateTestData?: (recordCount: number) => SheetIngestMaybePromise<void>;
   /** Show the test-data count input and button when a generator is provided. Defaults to true. */

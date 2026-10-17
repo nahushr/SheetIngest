@@ -83,6 +83,10 @@
   color: #0f172a;
 }
 
+.previewDialog {
+  max-height: min(94dvh, 64rem) !important;
+}
+
 .progress {
   margin: 16px 24px 0 !important;
   color: #0e7490 !important;
@@ -280,29 +284,164 @@
 
 .previewGrid {
   width: 100%;
-  height: 460px;
+  height: min(640px, calc(94dvh - 370px));
   min-height: 320px;
   overflow: hidden;
   border-radius: 14px;
 }
 
 .previewGridRoot :global(.MuiDataGrid-cell) {
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-.previewGridRoot :global(.MuiDataGrid-cell *),
-.previewGridRoot :global(.MuiDataGrid-cellContent) {
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-.previewGridRoot :global(.MuiDataGrid-cell svg),
-.previewGridRoot :global(.MuiDataGrid-cell img) {
-  flex: 0 0 auto;
+  align-items: center !important;
   overflow: visible !important;
+  padding-right: 7px !important;
+  padding-left: 7px !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  white-space: normal !important;
+}
+
+.previewGridRoot :global(.MuiDataGrid-columnHeader) {
+  padding-right: 9px !important;
+  padding-left: 9px !important;
+}
+
+.previewGridRoot :global(.MuiDataGrid-cellContent) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: visible !important;
+  white-space: normal !important;
+  font-family: var(--ops-font-sans, Inter, ui-sans-serif, system-ui, sans-serif);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.previewGridRoot :global(.MuiDataGrid-columnHeaderTitle) {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.previewUserDetails {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.previewAvatarLink {
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  outline-offset: 2px;
+}
+
+.previewUserAvatar {
+  width: 36px !important;
+  height: 36px !important;
+  border: 1px solid #a5f3fc;
+  background: #cffafe !important;
+  color: #0e7490 !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+}
+
+.previewUserDetails :global([data-test-id="user-contact-cell"]) {
+  min-width: 0;
+  padding: 0;
+}
+
+.previewAddressList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+}
+
+.previewAddress {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 7px;
+  row-gap: 2px;
+  min-width: 0;
+  padding: 4px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.previewAddress:last-child {
+  border-bottom: 0;
+}
+
+.previewAddressHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.previewAddressLabel {
+  color: #0e7490;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.previewAddressType {
+  padding: 1px 6px;
+  border: 1px solid #cffafe;
+  border-radius: 999px;
+  background: #ecfeff;
+  color: #0e7490;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.previewAddressLine,
+.previewWrappedValue {
+  color: #334155;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.previewAddressLine {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.previewAddressContact {
+  grid-column: 1 / -1;
+  color: #64748b;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.previewUrlLink {
+  color: #0284c7;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-decoration-color: #7dd3fc;
+  text-underline-offset: 3px;
+  white-space: normal;
+}
+
+.previewUrlLink:hover {
+  color: #0369a1;
+  text-decoration-color: #0284c7;
+}
+
+.previewEmptyValue {
+  color: #94a3b8;
+  font-size: 0.875rem;
 }
 
 .groupCard {
@@ -438,7 +577,7 @@
   }
 
   .previewGrid {
-    height: 360px;
+    height: min(400px, calc(94dvh - 360px));
     min-height: 280px;
   }
 

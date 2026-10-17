@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
+import type { GridPaginationModel } from "@mui/x-data-grid";
 import { OpsModalDialog } from "@simplishelf/opscards";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Chip,
@@ -32,8 +34,9 @@ import {
   NavigateBefore as NavigateBeforeIcon,
   NavigateNext as NavigateNextIcon,
 } from "@mui/icons-material";
-import SuperDataGrid from "@simplishelf/super-data-grid";
+import SuperDataGrid, { DateCell, GridChip, UserContactCell } from "@simplishelf/super-data-grid";
 import type {
+  SuperDataGridCellComponent,
   SuperDataGridCellProps,
   SuperDataGridColumnConfiguration,
   SuperDataGridColumnOptions,
@@ -51,6 +54,7 @@ import {
 import type {
   SheetIngestField,
   SheetIngestIssue,
+  SheetIngestPreviewCellRenderer,
   SheetIngestProps,
   SheetIngestRow,
   SheetIngestRowContext,
@@ -127,6 +131,41 @@ const ACCEPTED_EXTENSIONS = new Set(["csv", "xlsx"]);
 const DEFAULT_MAX_RECORDS = 1000;
 const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024;
 const DEFAULT_MAX_TEST_DATA_COUNT = 10_000;
+const PREVIEW_USER_DETAILS_FIELD = "__sheetIngestPreviewUserDetails";
+const PREVIEW_ADDRESSES_FIELD = "__sheetIngestPreviewAddresses";
+
+const USER_DETAIL_FIELDS = new Set([
+  "firstname",
+  "lastname",
+  "name",
+  "fullname",
+  "loginname",
+  "email",
+  "phone",
+  "imageurl",
+  "profilepicture",
+]);
+
+const ADDRESS_PART_FIELDS = new Set([
+  "streetaddress",
+  "streetaddress2",
+  "streetaddress3",
+  "city",
+  "state",
+  "zipcode",
+  "postalcode",
+  "country",
+  "addresstype",
+  "nameonaddress",
+  "emailonaddress",
+  "phoneonaddress",
+]);
+
+const getInitialPreviewPageSize = (): number => {
+  if (typeof window === "undefined" || window.innerHeight >= 1180) return 5;
+  if (window.innerHeight >= 880) return 3;
+  return 2;
+};
 
 const getFileExtension = (fileName: string): string =>
   fileName.split(".").pop()?.toLowerCase() ?? "";
@@ -239,6 +278,222 @@ const ErrorStatusCell = <Row extends SheetIngestRow>({
   );
 };
 
+interface PreviewAddressFieldGroup {
+  number: number;
+  fields: SheetIngestField[];
+}
+
+interface PreviewAddressValue {
+  label: string;
+  addressType: string;
+  lines: string[];
+  contact?: string;
+}
+
+const getAddressFieldGroup = (
+  field: SheetIngestField,
+): { number: number; part: string } | null => {
+  const normalizedKey = normalizeHeader(field.key);
+  if (ADDRESS_PART_FIELDS.has(normalizedKey)) {
+    return { number: 1, part: normalizedKey };
+  }
+
+  const match = /^address([1-9])(.+)$/.exec(normalizedKey);
+  if (!match || !ADDRESS_PART_FIELDS.has(match[2] ?? "")) return null;
+  return { number: Number(match[1]), part: match[2] ?? "" };
+};
+
+const getFieldNames = (field: SheetIngestField): string[] =>
+  [field.key, field.label, field.templateHeader, ...(field.aliases ?? [])]
+    .filter((name): name is string => Boolean(name?.trim()))
+    .map(normalizeHeader);
+
+const getPreviewFieldType = (
+  field: SheetIngestField,
+): SuperDataGridColumnType | undefined => {
+  if (field.type) return field.type;
+  const names = getFieldNames(field);
+  if (names.some((name) => /role$/.test(name))) return "badge";
+  if (names.some((name) => /datetime|dateandtime|timestamp/.test(name))) return "dateTime";
+  if (names.some((name) => /^(dob|birthdate|dateofbirth)$/.test(name) || /date$/.test(name))) {
+    return "date";
+  }
+  if (names.some((name) => name.includes("email"))) return "email";
+  if (names.some((name) => /phone|telephone|mobile|cell|fax/.test(name))) return "phone";
+  return undefined;
+};
+
+const isUrlField = (field: SheetIngestField): boolean =>
+  getFieldNames(field).some((name) => /url|website|href|hyperlink/.test(name));
+
+const getRecordText = (record: object, key: string): string => {
+  const value = Reflect.get(record, key);
+  return typeof value === "string" || typeof value === "number"
+    ? String(value).trim()
+    : value instanceof Date && !Number.isNaN(value.getTime())
+      ? value.toLocaleDateString()
+      : "";
+};
+
+const getSafeHttpUrl = (value: string): string | null => {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.href : null;
+  } catch {
+    return null;
+  }
+};
+
+const getListItems = (value: unknown): string[] => {
+  const values = Array.isArray(value)
+    ? value.map(cellText)
+    : typeof value === "string"
+      ? value.split(/[;,|]/)
+      : [cellText(value)];
+  return values.map((item) => item.trim()).filter(Boolean);
+};
+
+const isListField = (field: SheetIngestField): boolean =>
+  getFieldNames(field).some((name) => /(?:ids|idlist|list)$/.test(name));
+
+const isPermissionIdField = (field: SheetIngestField): boolean =>
+  getFieldNames(field).some((name) => /permissionids?$/.test(name));
+
+const isGroupIdField = (field: SheetIngestField): boolean =>
+  getFieldNames(field).some((name) => /(?:group|usergroup)ids?$/.test(name));
+
+const getListFieldLabel = (field: SheetIngestField): string => {
+  if (isGroupIdField(field)) return "group";
+  const normalized = normalizeHeader(field.key).replace(/ids?$/, "");
+  if (normalized.includes("user") || normalized.includes("member")) return "user";
+  if (normalized.includes("label")) return "label";
+  if (normalized.includes("permission")) return "permission";
+  const label = field.label.replace(/\s*\(.*\)\s*$/, "").trim();
+  return label || "item";
+};
+
+const isPreviewAddressValue = (value: unknown): value is PreviewAddressValue => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.label === "string" && typeof record.addressType === "string" &&
+    Array.isArray(record.lines) && record.lines.every((line) => typeof line === "string");
+};
+
+const PreviewUserDetailsCell = <Row extends SheetIngestRow>({
+  value,
+}: SuperDataGridCellProps<GridRow<Row>>): React.JSX.Element => {
+  const details = typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+  const firstName = cellText(details.firstName).trim();
+  const lastName = cellText(details.lastName).trim();
+  const name = cellText(details.name || details.fullName).trim() || [firstName, lastName].filter(Boolean).join(" ");
+  const email = cellText(details.email || details.loginName).trim();
+  const phone = cellText(details.phone).trim();
+  const photoUrl = getSafeHttpUrl(cellText(details.imageUrl || details.profilePicture).trim());
+  const initials = [firstName[0], lastName[0]].filter(Boolean).join("").toUpperCase() || name.slice(0, 1).toUpperCase();
+  const avatar = (
+    <Avatar className={styles.previewUserAvatar} src={photoUrl ?? undefined} alt={name || "User profile"}>
+      {initials || "?"}
+    </Avatar>
+  );
+
+  return (
+    <div className={styles.previewUserDetails}>
+      {photoUrl ? (
+        <a
+          aria-label={`Open profile image for ${name || email || "user"}`}
+          className={styles.previewAvatarLink}
+          href={photoUrl}
+          rel="noreferrer"
+          target="_blank"
+          title="Open profile image"
+        >
+          {avatar}
+        </a>
+      ) : avatar}
+      <UserContactCell
+        email={email}
+        firstName={firstName}
+        lastName={lastName}
+        name={name}
+        phone={phone}
+        showNameIcon={false}
+        wrap
+      />
+    </div>
+  );
+};
+
+const PreviewAddressesCell = <Row extends SheetIngestRow>({
+  value,
+}: SuperDataGridCellProps<GridRow<Row>>): React.JSX.Element => {
+  const addresses = Array.isArray(value) ? value.filter(isPreviewAddressValue) : [];
+  if (addresses.length === 0) return <span className={styles.previewEmptyValue}>—</span>;
+
+  return (
+    <div className={styles.previewAddressList}>
+      {addresses.map((address) => (
+        <div className={styles.previewAddress} key={address.label}>
+          <div className={styles.previewAddressHeading}>
+            <span className={styles.previewAddressLabel}>{address.label}</span>
+            {address.addressType && <span className={styles.previewAddressType}>{address.addressType}</span>}
+          </div>
+          {address.lines.map((line, index) => (
+            <span className={styles.previewAddressLine} key={`${address.label}-${index}`}>{line}</span>
+          ))}
+          {address.contact && <span className={styles.previewAddressContact}>{address.contact}</span>}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const PreviewListCountCell = <Row extends SheetIngestRow>({
+  field,
+  value,
+}: SuperDataGridCellProps<GridRow<Row>>): React.JSX.Element => {
+  const items = getListItems(value);
+  if (items.length === 0) return <span className={styles.previewEmptyValue}>—</span>;
+  const label = getListFieldLabel({ key: field, label: field });
+  const title = items.join(", ");
+
+  return (
+    <GridChip
+      aria-label={`${items.length} ${label}${items.length === 1 ? "" : "s"}`}
+      label={`${items.length} ${label}${items.length === 1 ? "" : "s"}`}
+      title={title}
+      tone="cyan"
+    />
+  );
+};
+
+const PreviewUrlCell = <Row extends SheetIngestRow>({
+  value,
+}: SuperDataGridCellProps<GridRow<Row>>): React.JSX.Element => {
+  const text = cellText(value).trim();
+  const href = getSafeHttpUrl(text);
+  if (!text) return <span className={styles.previewEmptyValue}>—</span>;
+  return href ? (
+    <a className={styles.previewUrlLink} href={href} rel="noreferrer" target="_blank" title={text}>
+      {text}
+    </a>
+  ) : (
+    <span className={styles.previewWrappedValue}>{text}</span>
+  );
+};
+
+const PreviewDateCell = <Row extends SheetIngestRow>({
+  value,
+}: SuperDataGridCellProps<GridRow<Row>>): React.JSX.Element => (
+  <DateCell
+    emptyText="—"
+    formatString="do MMM yyyy"
+    options={{ showIcon: false, timeZone: "UTC" }}
+    value={value}
+  />
+);
+
 const getCustomColumns = (
   fields: readonly SheetIngestField[],
   rowNumberLabel: string,
@@ -248,34 +503,105 @@ const getCustomColumns = (
   columnConfiguration: Partial<Record<string, SuperDataGridColumnConfiguration>>;
   columnOptions: Partial<Record<string, SuperDataGridColumnOptions>>;
   columnTypes: Partial<Record<string, SuperDataGridColumnType>>;
+  hasUserDetails: boolean;
+  userDetailsFields: SheetIngestField[];
+  addressGroups: PreviewAddressFieldGroup[];
+  urlFields: string[];
+  dateFields: string[];
+  listFields: SheetIngestField[];
 } => {
   const visibleFields = fields.filter((field) => !field.hideInPreview);
+  const nameKeys = new Set(visibleFields.flatMap(getFieldNames));
+  const hasName = (nameKeys.has("firstname") && nameKeys.has("lastname")) ||
+    nameKeys.has("name") || nameKeys.has("fullname");
+  const hasEmail = nameKeys.has("loginname") || nameKeys.has("email");
+  const userDetailsFields = hasName && hasEmail
+    ? visibleFields.filter((field) => getFieldNames(field).some((name) => USER_DETAIL_FIELDS.has(name)))
+    : [];
+  const hasUserDetails = userDetailsFields.length > 1;
+  const addressGroupsByNumber = new Map<number, SheetIngestField[]>();
+  for (const field of visibleFields) {
+    const group = getAddressFieldGroup(field);
+    if (!group) continue;
+    const addressFields = addressGroupsByNumber.get(group.number) ?? [];
+    addressFields.push(field);
+    addressGroupsByNumber.set(group.number, addressFields);
+  }
+  const addressGroups = [...addressGroupsByNumber.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([number, addressFields]) => ({ number, fields: addressFields }));
+  const hasRole = visibleFields.some((field) => getPreviewFieldType(field) === "badge");
+  const permissionFields = hasRole ? visibleFields.filter(isPermissionIdField) : [];
+  const permissionFieldKeys = new Set(permissionFields.map((field) => field.key));
+  const listFields = visibleFields.filter((field) =>
+    isListField(field) && !permissionFieldKeys.has(field.key),
+  );
+  const listFieldKeys = new Set(listFields.map((field) => field.key));
+  const userDetailsFieldKeys = new Set(userDetailsFields.map((field) => field.key));
+  const addressFieldKeys = new Set(addressGroups.flatMap((group) => group.fields.map((field) => field.key)));
   const columnConfiguration: Partial<Record<string, SuperDataGridColumnConfiguration>> = {
-    rowNumber: { headerName: rowNumberLabel, width: 76, minWidth: 70, maxWidth: 90 },
-    status: { headerName: statusLabel, width: 150, minWidth: 130 },
+    rowNumber: { headerName: rowNumberLabel, width: 52, minWidth: 52, maxWidth: 58 },
+    status: { headerName: statusLabel, minWidth: 100, flex: 0.75 },
   };
   const columnOptions: Partial<Record<string, SuperDataGridColumnOptions>> = {};
   const columnTypes: Partial<Record<string, SuperDataGridColumnType>> = {};
-  for (const field of visibleFields) {
-    columnConfiguration[field.key] = {
-      headerName: field.label,
-      ...(field.width == null ? {} : { width: field.width }),
-      minWidth: Math.min(field.width ?? 160, 110),
+  const urlFields: string[] = [];
+  const dateFields: string[] = [];
+
+  if (hasUserDetails) {
+    columnConfiguration[PREVIEW_USER_DETAILS_FIELD] = {
+      headerName: "User Details",
+      minWidth: 260,
+      flex: 2.2,
     };
-    const normalizedNames = [field.key, field.label, field.templateHeader, ...(field.aliases ?? [])]
-      .filter((name): name is string => Boolean(name?.trim()))
-      .map(normalizeHeader);
-    let inferredType = field.type;
-    if (!inferredType && normalizedNames.some((name) => name.includes("email"))) {
-      inferredType = "email";
-    } else if (
-      !inferredType &&
-      normalizedNames.some((name) => /phone|telephone|mobile|cell|fax/.test(name))
-    ) {
-      inferredType = "phone";
+    columnTypes[PREVIEW_USER_DETAILS_FIELD] = "peopleDetails";
+  }
+  if (addressGroups.length > 0) {
+    columnConfiguration[PREVIEW_ADDRESSES_FIELD] = {
+      headerName: addressGroups.length > 1 ? "Addresses" : "Address",
+      minWidth: 190,
+      flex: 1.3,
+    };
+  }
+
+  const columns = ["rowNumber"];
+  let addedUserDetails = false;
+  let addedAddresses = false;
+  for (const field of visibleFields) {
+    if (userDetailsFieldKeys.has(field.key)) {
+      if (!addedUserDetails) {
+        columns.push(PREVIEW_USER_DETAILS_FIELD);
+        addedUserDetails = true;
+      }
+      continue;
     }
 
-    if (inferredType) columnTypes[field.key] = inferredType;
+    if (addressFieldKeys.has(field.key)) {
+      if (!addedAddresses) {
+        columns.push(PREVIEW_ADDRESSES_FIELD);
+        addedAddresses = true;
+      }
+      continue;
+    }
+
+    if (permissionFieldKeys.has(field.key)) continue;
+
+    columns.push(field.key);
+    const inferredType = getPreviewFieldType(field);
+    const urlField = isUrlField(field);
+    const listField = listFieldKeys.has(field.key);
+    const minWidth = field.width == null
+      ? inferredType === "badge" ? 104 : inferredType === "date" || inferredType === "dateTime" ? 128 : urlField ? 160 : listField ? 80 : field.key.toLowerCase() === "notes" ? 90 : 100
+      : Math.min(field.width, 110);
+    columnConfiguration[field.key] = {
+      headerName: listField && isGroupIdField(field) ? "Groups" : field.label,
+      ...(field.width == null ? { flex: inferredType === "badge" || listField ? 0.65 : inferredType === "date" ? 0.8 : field.key.toLowerCase() === "notes" ? 0.7 : 0.85 } : { width: field.width }),
+      minWidth,
+    };
+
+    if (listField) columnTypes[field.key] = "countChip";
+    else if (inferredType) columnTypes[field.key] = inferredType;
+    if (inferredType === "date") dateFields.push(field.key);
     if (inferredType === "email") {
       columnOptions[field.key] = {
         ...field.columnOptions,
@@ -292,15 +618,46 @@ const getCustomColumns = (
           ...field.columnOptions?.phone,
         },
       };
+    } else if (inferredType === "date") {
+      columnOptions[field.key] = {
+        ...field.columnOptions,
+        date: { showIcon: false, timeZone: "UTC", ...field.columnOptions?.date },
+      };
+    } else if (inferredType === "badge") {
+      columnOptions[field.key] = {
+        ...field.columnOptions,
+        badge: {
+          fallbackColor: "neutral",
+          ...field.columnOptions?.badge,
+          colors: {
+            SUPERADMIN: "purple",
+            ADMIN: "purple",
+            MANAGER: "cyan",
+            VIEWER: "slate",
+            CUSTOMER: "slate",
+            CUSTOM: "orange",
+            ...field.columnOptions?.badge?.colors,
+          },
+        },
+      };
     } else if (field.columnOptions) {
       columnOptions[field.key] = field.columnOptions;
     }
+    if (urlField) urlFields.push(field.key);
   }
+  columns.push("status");
+
   return {
-    columns: ["rowNumber", ...visibleFields.map((field) => field.key), "status"],
+    columns,
     columnConfiguration,
     columnOptions,
     columnTypes,
+    hasUserDetails,
+    userDetailsFields,
+    addressGroups,
+    urlFields,
+    dateFields,
+    listFields,
   };
 };
 
@@ -311,6 +668,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   onSubmit,
   mapRow,
   validateRow,
+  previewCellRenderers,
   onGenerateTestData,
   showTestDataGenerator = true,
   renderStepContent,
@@ -338,6 +696,10 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   const [headerRows, setHeaderRows] = useState<number[]>([0]);
   const [columnMapping, setColumnMapping] = useState<Record<string, number | null>>({});
   const [processedRows, setProcessedRows] = useState<ProcessedRow<Row>[]>([]);
+  const [previewPaginationModel, setPreviewPaginationModel] = useState<GridPaginationModel>(() => ({
+    page: 0,
+    pageSize: getInitialPreviewPageSize(),
+  }));
   const [testDataCount, setTestDataCount] = useState(defaultTestDataCount);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -352,6 +714,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     setHeaderRows([0]);
     setColumnMapping({});
     setProcessedRows([]);
+    setPreviewPaginationModel({ page: 0, pageSize: getInitialPreviewPageSize() });
     setBusy(false);
     setError(null);
     setSuccess(null);
@@ -389,10 +752,36 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
     () => getCustomColumns(fields, t.row, t.status),
     [fields, t.row, t.status],
   );
-  const cellComponents = useMemo(
-    () => ({ status: ErrorStatusCell<Row> }),
-    [],
-  );
+  const cellComponents = useMemo(() => {
+    const components: Partial<Record<string, SuperDataGridCellComponent<GridRow<Row>>>> = {
+      status: ErrorStatusCell<Row>,
+    };
+    if (grid.hasUserDetails) {
+      components[PREVIEW_USER_DETAILS_FIELD] = PreviewUserDetailsCell<Row>;
+    }
+    if (grid.addressGroups.length > 0) {
+      components[PREVIEW_ADDRESSES_FIELD] = PreviewAddressesCell<Row>;
+    }
+    for (const field of grid.urlFields) {
+      components[field] = PreviewUrlCell<Row>;
+    }
+    for (const field of grid.dateFields) {
+      components[field] = PreviewDateCell<Row>;
+    }
+    for (const field of grid.listFields) {
+      components[field.key] = PreviewListCountCell<Row>;
+    }
+    for (const field of Object.keys(previewCellRenderers ?? {})) {
+      const renderer = previewCellRenderers?.[field];
+      if (!renderer) continue;
+      components[field] = (props) => renderer({
+        field: props.field,
+        value: props.value,
+        row: props.row.__sheetIngestData,
+      });
+    }
+    return components;
+  }, [grid, previewCellRenderers]);
 
   const contextForStep: SheetIngestStepContext = {
     step,
@@ -520,6 +909,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
         ),
       );
       setProcessedRows(result);
+      setPreviewPaginationModel({ page: 0, pageSize: getInitialPreviewPageSize() });
       setStep("preview");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The file could not be prepared for review.");
@@ -573,11 +963,79 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
   });
   const componentRows = rowCount;
   const previewRows = useMemo(
-    () => gridRows.map((row) => ({
-      ...row,
-      ...Object.fromEntries(fields.map((field) => [field.key, cellText((row as Record<string, unknown>)[field.key])])),
-    })),
-    [fields, gridRows],
+    () => gridRows.map((row) => {
+      const rowData = row.__sheetIngestData;
+      const formattedFields = Object.fromEntries(
+        fields.map((field) => [field.key, cellText(Reflect.get(rowData, field.key))]),
+      );
+      const userDetails = Object.fromEntries(
+        grid.userDetailsFields.map((field) => [field.key, cellText(Reflect.get(rowData, field.key))]),
+      );
+      const userDetailValue = (...names: string[]): string => {
+        const field = grid.userDetailsFields.find((candidate) =>
+          getFieldNames(candidate).some((name) => names.includes(name)),
+        );
+        return field ? getRecordText(rowData, field.key) : "";
+      };
+      const userName = [userDetailValue("firstname"), userDetailValue("lastname")]
+        .filter(Boolean)
+        .join(" ") || userDetailValue("name", "fullname");
+      const userEmail = userDetailValue("loginname", "email");
+      const userPhone = userDetailValue("phone");
+      const isSameContact = (addressValue: string, userValue: string, phone = false): boolean => {
+        if (!addressValue || !userValue) return false;
+        const normalize = (value: string): string => phone
+          ? value.replace(/\D/g, "")
+          : value.trim().toLocaleLowerCase();
+        return normalize(addressValue) === normalize(userValue);
+      };
+      const addresses = grid.addressGroups.flatMap((group) => {
+        const values = new Map<string, string>();
+        for (const field of group.fields) {
+          const descriptor = getAddressFieldGroup(field);
+          if (!descriptor) continue;
+          const text = getRecordText(rowData, field.key);
+          if (text) values.set(descriptor.part, text);
+        }
+        const street = [values.get("streetaddress"), values.get("streetaddress2"), values.get("streetaddress3")]
+          .filter(Boolean)
+          .join(", ");
+        const locality = [
+          values.get("city"),
+          values.get("state"),
+          values.get("zipcode") || values.get("postalcode"),
+          values.get("country"),
+        ].filter(Boolean).join(", ");
+        const addressLine = [street, locality].filter(Boolean).join(", ");
+        const contact = [
+          values.get("nameonaddress") && !isSameContact(values.get("nameonaddress") ?? "", userName)
+            ? `Name: ${values.get("nameonaddress")}`
+            : "",
+          values.get("emailonaddress") && !isSameContact(values.get("emailonaddress") ?? "", userEmail)
+            ? `Email: ${values.get("emailonaddress")}`
+            : "",
+          values.get("phoneonaddress") && !isSameContact(values.get("phoneonaddress") ?? "", userPhone, true)
+            ? `Phone: ${values.get("phoneonaddress")}`
+            : "",
+        ].filter(Boolean).join(" · ");
+        const lines = [addressLine].filter(Boolean);
+        if (lines.length === 0 && !values.get("addresstype")) return [];
+        return [{
+          label: group.number === 1 ? "Primary" : `Address ${group.number}`,
+          addressType: values.get("addresstype") ?? "",
+          lines,
+          contact,
+        }];
+      });
+
+      return {
+        ...row,
+        ...formattedFields,
+        ...(grid.hasUserDetails ? { [PREVIEW_USER_DETAILS_FIELD]: userDetails } : {}),
+        ...(grid.addressGroups.length > 0 ? { [PREVIEW_ADDRESSES_FIELD]: addresses } : {}),
+      };
+    }),
+    [fields, grid, gridRows],
   );
 
   return (
@@ -591,6 +1049,7 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
       closeButtonLabel={t.close}
       classNames={{
         ...dialogProps?.classNames,
+        paper: `${styles.previewDialog} ${dialogProps?.classNames?.paper ?? ""}`.trim(),
         content: `${styles.dialogContent} ${step === "upload" ? styles.uploadContent : ""} ${dialogProps?.classNames?.content ?? ""}`,
         actions: `${styles.dialogActions} ${dialogProps?.classNames?.actions ?? ""}`,
       }}
@@ -841,12 +1300,15 @@ export const SheetIngest = <Row extends SheetIngestRow = SheetIngestRow>({
                 columnOptions={grid.columnOptions}
                 columnTypes={grid.columnTypes}
                 cellComponents={cellComponents}
+                paginationModel={previewPaginationModel}
+                onPaginationModelChange={setPreviewPaginationModel}
                 gridClassName={styles.previewGridRoot}
                 getRowId={(row) => row.rowNumber}
                 height="100%"
                 minHeight="100%"
-                rowHeight={52}
-                pageSizeOptions={[5, 10, 25, 50, 100, 500]}
+                getRowHeight={() => "auto"}
+                getEstimatedRowHeight={() => 88}
+                pageSizeOptions={[2, 3, 5, 10, 25, 50, 100, 500]}
                 hideToolbar
                 hideViews
                 canAddViews={false}

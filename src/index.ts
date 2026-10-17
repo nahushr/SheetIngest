@@ -16,6 +16,8 @@ export type {
   SheetIngestGroup,
   SheetIngestIssue,
   SheetIngestMaybePromise,
+  SheetIngestPreviewCellContext,
+  SheetIngestPreviewCellRenderer,
   SheetIngestProps,
   SheetIngestRow,
   SheetIngestRowContext,
