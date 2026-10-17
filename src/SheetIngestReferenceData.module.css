@@ -80,56 +80,6 @@
   min-width: 0;
 }
 
-.referenceCard {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 12px;
-  padding: 18px;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
-}
-
-.cardHeading {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 44px;
-}
-
-.cardNumber {
-  display: inline-flex;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #a5f3fc;
-  border-radius: 11px;
-  background: #ecfeff;
-  color: #0e7490;
-  font-family: var(--ops-font-mono, "JetBrains Mono", ui-monospace, monospace);
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.cardHeading h3 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.cardHeading p {
-  margin: 4px 0 0;
-  color: #475569;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
-
 .referenceGridInstance {
   width: 100%;
   min-width: 0;
@@ -163,9 +113,6 @@
     align-self: flex-start;
   }
 
-  .referenceCard {
-    padding: 14px;
-  }
 }
 
 @media (min-width: 1100px) {

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ReferenceDataCard } from "@simplishelf/opscards";
 import SuperDataGrid from "@simplishelf/super-data-grid";
 import type {
   SuperDataGridColumnOptions,
@@ -104,14 +105,13 @@ export const SheetIngestReferenceData = ({
 
     <div className={styles.referenceSections}>
       {sections.map((section, index) => (
-        <article className={styles.referenceCard} key={section.id}>
-          <div className={styles.cardHeading}>
-            <span className={styles.cardNumber}>{String(index + 1).padStart(2, "0")}</span>
-            <div>
-              <h3>{section.title}</h3>
-              <p>{section.description}</p>
-            </div>
-          </div>
+        <ReferenceDataCard
+          key={section.id}
+          ordinal={index + 1}
+          title={section.title}
+          description={section.description}
+          aria-label={section.title}
+        >
           <div className={styles.referenceGridInstance} aria-label={section.title} role="region">
             <SuperDataGrid
               columns={section.columns}
@@ -141,7 +141,7 @@ export const SheetIngestReferenceData = ({
               dataGridSlots={{ noRowsOverlay: createEmptyOverlay(section.emptyMessage ?? "No reference data available.") }}
             />
           </div>
-        </article>
+        </ReferenceDataCard>
       ))}
     </div>
   </section>
