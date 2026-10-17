@@ -357,6 +357,11 @@ export const downloadTemplate = async (
   const link = document.createElement("a");
   link.href = url;
   link.download = template.fileName;
+  link.style.display = "none";
+  document.body.appendChild(link);
   link.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  link.remove();
+  // Let the browser start consuming the object URL before revoking it. A zero-delay
+  // cleanup can cancel downloads in browsers that begin the transfer asynchronously.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 };
